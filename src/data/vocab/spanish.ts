@@ -1,4 +1,4 @@
-import { VocabEntry } from '../types';
+import type { VocabEntry } from '../../types';
 
 // Spanish vocabulary - comprehensive dataset
 export const spanishVocab: VocabEntry[] = [

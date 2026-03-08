@@ -1,4 +1,4 @@
-import { VocabEntry } from '../../types';
+import type { VocabEntry } from '../../types';
 
 export const frenchVocab: VocabEntry[] = [
   // ── Greetings ──────────────────────────────────────────────────────────────
