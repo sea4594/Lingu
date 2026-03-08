@@ -1,0 +1,192 @@
+import type { VocabEntry } from '../../types';
+
+export const thaiVocab: VocabEntry[] = [
+  // Greetings
+  { id: 'th-001', english: 'hello', translation: 'สวัสดี', romanization: 'sawatdi', category: 'greetings', difficulty: 1, exampleSentence: 'สวัสดีครับ! คุณเป็นอย่างไรบ้าง?', exampleTranslation: 'Hello! How are you?' },
+  { id: 'th-002', english: 'goodbye', translation: 'ลาก่อน', romanization: 'la kon', category: 'greetings', difficulty: 1 },
+  { id: 'th-003', english: 'good morning', translation: 'อรุณสวัสดิ์', romanization: 'arun sawat', category: 'greetings', difficulty: 2 },
+  { id: 'th-004', english: 'good evening', translation: 'สวัสดีตอนเย็น', romanization: 'sawatdi ton yen', category: 'greetings', difficulty: 1 },
+  { id: 'th-005', english: 'how are you', translation: 'คุณเป็นอย่างไรบ้าง', romanization: 'khun pen yang rai bang', category: 'greetings', difficulty: 1, exampleSentence: 'สวัสดี คุณเป็นอย่างไรบ้าง?', exampleTranslation: 'Hello, how are you?' },
+  { id: 'th-006', english: 'I am fine', translation: 'ฉันสบายดี', romanization: 'chan sabai di', category: 'greetings', difficulty: 1 },
+  { id: 'th-007', english: 'thank you', translation: 'ขอบคุณ', romanization: 'khop khun', category: 'greetings', difficulty: 1, exampleSentence: 'ขอบคุณมากครับ', exampleTranslation: 'Thank you very much.' },
+  { id: 'th-008', english: 'you\'re welcome', translation: 'ยินดี', romanization: 'yin di', category: 'greetings', difficulty: 1 },
+  { id: 'th-009', english: 'excuse me', translation: 'ขอโทษ', romanization: 'kho thot', category: 'greetings', difficulty: 1 },
+  { id: 'th-010', english: 'sorry', translation: 'ขอโทษ', romanization: 'kho thot', category: 'greetings', difficulty: 1 },
+
+  // Numbers
+  { id: 'th-011', english: 'one', translation: 'หนึ่ง', romanization: 'nueng', category: 'numbers', difficulty: 1 },
+  { id: 'th-012', english: 'two', translation: 'สอง', romanization: 'song', category: 'numbers', difficulty: 1 },
+  { id: 'th-013', english: 'three', translation: 'สาม', romanization: 'sam', category: 'numbers', difficulty: 1 },
+  { id: 'th-014', english: 'four', translation: 'สี่', romanization: 'si', category: 'numbers', difficulty: 1 },
+  { id: 'th-015', english: 'five', translation: 'ห้า', romanization: 'ha', category: 'numbers', difficulty: 1 },
+  { id: 'th-016', english: 'six', translation: 'หก', romanization: 'hok', category: 'numbers', difficulty: 1 },
+  { id: 'th-017', english: 'seven', translation: 'เจ็ด', romanization: 'chet', category: 'numbers', difficulty: 1 },
+  { id: 'th-018', english: 'eight', translation: 'แปด', romanization: 'paet', category: 'numbers', difficulty: 1 },
+  { id: 'th-019', english: 'nine', translation: 'เก้า', romanization: 'kao', category: 'numbers', difficulty: 1 },
+  { id: 'th-020', english: 'ten', translation: 'สิบ', romanization: 'sip', category: 'numbers', difficulty: 1 },
+  { id: 'th-021', english: 'twenty', translation: 'ยี่สิบ', romanization: 'yi sip', category: 'numbers', difficulty: 1 },
+  { id: 'th-022', english: 'one hundred', translation: 'หนึ่งร้อย', romanization: 'nueng roi', category: 'numbers', difficulty: 2 },
+  { id: 'th-023', english: 'one thousand', translation: 'หนึ่งพัน', romanization: 'nueng phan', category: 'numbers', difficulty: 2 },
+
+  // Colors
+  { id: 'th-024', english: 'red', translation: 'แดง', romanization: 'daeng', category: 'colors', difficulty: 1 },
+  { id: 'th-025', english: 'blue', translation: 'น้ำเงิน', romanization: 'nam ngoen', category: 'colors', difficulty: 1 },
+  { id: 'th-026', english: 'green', translation: 'เขียว', romanization: 'khiao', category: 'colors', difficulty: 1 },
+  { id: 'th-027', english: 'yellow', translation: 'เหลือง', romanization: 'lueang', category: 'colors', difficulty: 1 },
+  { id: 'th-028', english: 'white', translation: 'ขาว', romanization: 'khao', category: 'colors', difficulty: 1 },
+  { id: 'th-029', english: 'black', translation: 'ดำ', romanization: 'dam', category: 'colors', difficulty: 1 },
+  { id: 'th-030', english: 'orange', translation: 'ส้ม', romanization: 'som', category: 'colors', difficulty: 1 },
+  { id: 'th-031', english: 'purple', translation: 'ม่วง', romanization: 'muang', category: 'colors', difficulty: 2 },
+  { id: 'th-032', english: 'pink', translation: 'ชมพู', romanization: 'chom phu', category: 'colors', difficulty: 1 },
+
+  // Food
+  { id: 'th-033', english: 'rice', translation: 'ข้าว', romanization: 'khao', category: 'food', difficulty: 1, exampleSentence: 'ฉันกินข้าวทุกวัน', exampleTranslation: 'I eat rice every day.' },
+  { id: 'th-034', english: 'water', translation: 'น้ำ', romanization: 'nam', category: 'food', difficulty: 1 },
+  { id: 'th-035', english: 'noodles', translation: 'บะหมี่', romanization: 'ba mi', category: 'food', difficulty: 1 },
+  { id: 'th-036', english: 'chicken', translation: 'ไก่', romanization: 'kai', category: 'food', difficulty: 1 },
+  { id: 'th-037', english: 'pork', translation: 'หมู', romanization: 'mu', category: 'food', difficulty: 1 },
+  { id: 'th-038', english: 'fish', translation: 'ปลา', romanization: 'pla', category: 'food', difficulty: 1 },
+  { id: 'th-039', english: 'vegetables', translation: 'ผัก', romanization: 'phak', category: 'food', difficulty: 1 },
+  { id: 'th-040', english: 'fruit', translation: 'ผลไม้', romanization: 'phon la mai', category: 'food', difficulty: 1 },
+  { id: 'th-041', english: 'spicy', translation: 'เผ็ด', romanization: 'phet', category: 'food', difficulty: 1, exampleSentence: 'อาหารไทยเผ็ดมาก', exampleTranslation: 'Thai food is very spicy.' },
+  { id: 'th-042', english: 'delicious', translation: 'อร่อย', romanization: 'aroy', category: 'food', difficulty: 1 },
+  { id: 'th-043', english: 'bread', translation: 'ขนมปัง', romanization: 'khanom pang', category: 'food', difficulty: 1 },
+  { id: 'th-044', english: 'egg', translation: 'ไข่', romanization: 'khai', category: 'food', difficulty: 1 },
+  { id: 'th-045', english: 'milk', translation: 'นม', romanization: 'nom', category: 'food', difficulty: 1 },
+
+  // Travel
+  { id: 'th-046', english: 'airport', translation: 'สนามบิน', romanization: 'sanam bin', category: 'travel', difficulty: 2, exampleSentence: 'สนามบินอยู่ที่ไหน?', exampleTranslation: 'Where is the airport?' },
+  { id: 'th-047', english: 'hotel', translation: 'โรงแรม', romanization: 'rong raem', category: 'travel', difficulty: 1 },
+  { id: 'th-048', english: 'ticket', translation: 'ตั๋ว', romanization: 'tua', category: 'travel', difficulty: 2 },
+  { id: 'th-049', english: 'passport', translation: 'หนังสือเดินทาง', romanization: 'nang sue doen thang', category: 'travel', difficulty: 2 },
+  { id: 'th-050', english: 'bus', translation: 'รถบัส', romanization: 'rot bat', category: 'travel', difficulty: 1 },
+  { id: 'th-051', english: 'train', translation: 'รถไฟ', romanization: 'rot fai', category: 'travel', difficulty: 1 },
+  { id: 'th-052', english: 'taxi', translation: 'แท็กซี่', romanization: 'thaek si', category: 'travel', difficulty: 1 },
+  { id: 'th-053', english: 'map', translation: 'แผนที่', romanization: 'phaen thi', category: 'travel', difficulty: 2 },
+  { id: 'th-054', english: 'luggage', translation: 'กระเป๋าเดินทาง', romanization: 'krapao doen thang', category: 'travel', difficulty: 2 },
+
+  // Family
+  { id: 'th-055', english: 'mother', translation: 'แม่', romanization: 'mae', category: 'family', difficulty: 1 },
+  { id: 'th-056', english: 'father', translation: 'พ่อ', romanization: 'pho', category: 'family', difficulty: 1 },
+  { id: 'th-057', english: 'sister', translation: 'พี่สาว', romanization: 'phi sao', category: 'family', difficulty: 1 },
+  { id: 'th-058', english: 'brother', translation: 'พี่ชาย', romanization: 'phi chai', category: 'family', difficulty: 1 },
+  { id: 'th-059', english: 'grandfather', translation: 'ปู่', romanization: 'pu', category: 'family', difficulty: 1 },
+  { id: 'th-060', english: 'grandmother', translation: 'ย่า', romanization: 'ya', category: 'family', difficulty: 1 },
+  { id: 'th-061', english: 'child', translation: 'เด็ก', romanization: 'dek', category: 'family', difficulty: 1 },
+  { id: 'th-062', english: 'husband', translation: 'สามี', romanization: 'sa mi', category: 'family', difficulty: 2 },
+  { id: 'th-063', english: 'wife', translation: 'ภรรยา', romanization: 'phan ra ya', category: 'family', difficulty: 2 },
+
+  // Time
+  { id: 'th-064', english: 'today', translation: 'วันนี้', romanization: 'wan ni', category: 'time', difficulty: 1 },
+  { id: 'th-065', english: 'tomorrow', translation: 'พรุ่งนี้', romanization: 'phrung ni', category: 'time', difficulty: 1 },
+  { id: 'th-066', english: 'yesterday', translation: 'เมื่อวาน', romanization: 'muea wan', category: 'time', difficulty: 1 },
+  { id: 'th-067', english: 'now', translation: 'ตอนนี้', romanization: 'ton ni', category: 'time', difficulty: 1 },
+  { id: 'th-068', english: 'morning', translation: 'เช้า', romanization: 'chao', category: 'time', difficulty: 1 },
+  { id: 'th-069', english: 'afternoon', translation: 'บ่าย', romanization: 'bai', category: 'time', difficulty: 1 },
+  { id: 'th-070', english: 'evening', translation: 'เย็น', romanization: 'yen', category: 'time', difficulty: 1 },
+  { id: 'th-071', english: 'night', translation: 'คืน', romanization: 'khuen', category: 'time', difficulty: 1 },
+  { id: 'th-072', english: 'week', translation: 'สัปดาห์', romanization: 'sap da', category: 'time', difficulty: 2 },
+  { id: 'th-073', english: 'month', translation: 'เดือน', romanization: 'duean', category: 'time', difficulty: 1 },
+  { id: 'th-074', english: 'year', translation: 'ปี', romanization: 'pi', category: 'time', difficulty: 1 },
+
+  // Weather
+  { id: 'th-075', english: 'hot', translation: 'ร้อน', romanization: 'ron', category: 'weather', difficulty: 1, exampleSentence: 'วันนี้อากาศร้อนมาก', exampleTranslation: 'Today the weather is very hot.' },
+  { id: 'th-076', english: 'rain', translation: 'ฝน', romanization: 'fon', category: 'weather', difficulty: 1 },
+  { id: 'th-077', english: 'sun', translation: 'ดวงอาทิตย์', romanization: 'duang a thit', category: 'weather', difficulty: 1 },
+  { id: 'th-078', english: 'wind', translation: 'ลม', romanization: 'lom', category: 'weather', difficulty: 1 },
+  { id: 'th-079', english: 'cloud', translation: 'เมฆ', romanization: 'mek', category: 'weather', difficulty: 1 },
+  { id: 'th-080', english: 'cold', translation: 'หนาว', romanization: 'nao', category: 'weather', difficulty: 1 },
+  { id: 'th-081', english: 'humid', translation: 'ชื้น', romanization: 'chuen', category: 'weather', difficulty: 3 },
+  { id: 'th-082', english: 'storm', translation: 'พายุ', romanization: 'phayu', category: 'weather', difficulty: 2 },
+
+  // Body
+  { id: 'th-083', english: 'head', translation: 'หัว', romanization: 'hua', category: 'body', difficulty: 1 },
+  { id: 'th-084', english: 'eye', translation: 'ตา', romanization: 'ta', category: 'body', difficulty: 1 },
+  { id: 'th-085', english: 'ear', translation: 'หู', romanization: 'hu', category: 'body', difficulty: 1 },
+  { id: 'th-086', english: 'nose', translation: 'จมูก', romanization: 'cha muk', category: 'body', difficulty: 1 },
+  { id: 'th-087', english: 'mouth', translation: 'ปาก', romanization: 'pak', category: 'body', difficulty: 1 },
+  { id: 'th-088', english: 'hand', translation: 'มือ', romanization: 'mue', category: 'body', difficulty: 1 },
+  { id: 'th-089', english: 'foot', translation: 'เท้า', romanization: 'thao', category: 'body', difficulty: 1 },
+  { id: 'th-090', english: 'heart', translation: 'หัวใจ', romanization: 'hua chai', category: 'body', difficulty: 2 },
+  { id: 'th-091', english: 'stomach', translation: 'ท้อง', romanization: 'thong', category: 'body', difficulty: 1 },
+  { id: 'th-092', english: 'back', translation: 'หลัง', romanization: 'lang', category: 'body', difficulty: 1 },
+
+  // Verbs
+  { id: 'th-093', english: 'to eat', translation: 'กิน', romanization: 'kin', category: 'verbs', difficulty: 1, exampleSentence: 'คุณกินข้าวหรือยัง?', exampleTranslation: 'Have you eaten yet?' },
+  { id: 'th-094', english: 'to drink', translation: 'ดื่ม', romanization: 'duem', category: 'verbs', difficulty: 1 },
+  { id: 'th-095', english: 'to go', translation: 'ไป', romanization: 'pai', category: 'verbs', difficulty: 1, exampleSentence: 'คุณจะไปที่ไหน?', exampleTranslation: 'Where are you going?' },
+  { id: 'th-096', english: 'to come', translation: 'มา', romanization: 'ma', category: 'verbs', difficulty: 1 },
+  { id: 'th-097', english: 'to speak', translation: 'พูด', romanization: 'phut', category: 'verbs', difficulty: 1 },
+  { id: 'th-098', english: 'to understand', translation: 'เข้าใจ', romanization: 'khao chai', category: 'verbs', difficulty: 2 },
+  { id: 'th-099', english: 'to buy', translation: 'ซื้อ', romanization: 'sue', category: 'verbs', difficulty: 1 },
+  { id: 'th-100', english: 'to sleep', translation: 'นอนหลับ', romanization: 'non lap', category: 'verbs', difficulty: 1 },
+  { id: 'th-101', english: 'to work', translation: 'ทำงาน', romanization: 'tham ngan', category: 'verbs', difficulty: 1 },
+  { id: 'th-102', english: 'to study', translation: 'เรียน', romanization: 'rian', category: 'verbs', difficulty: 1 },
+  { id: 'th-103', english: 'to love', translation: 'รัก', romanization: 'rak', category: 'verbs', difficulty: 1 },
+  { id: 'th-104', english: 'to want', translation: 'ต้องการ', romanization: 'tong kan', category: 'verbs', difficulty: 2 },
+
+  // Adjectives
+  { id: 'th-105', english: 'big', translation: 'ใหญ่', romanization: 'yai', category: 'adjectives', difficulty: 1 },
+  { id: 'th-106', english: 'small', translation: 'เล็ก', romanization: 'lek', category: 'adjectives', difficulty: 1 },
+  { id: 'th-107', english: 'beautiful', translation: 'สวย', romanization: 'suai', category: 'adjectives', difficulty: 1, exampleSentence: 'เธอสวยมาก', exampleTranslation: 'She is very beautiful.' },
+  { id: 'th-108', english: 'good', translation: 'ดี', romanization: 'di', category: 'adjectives', difficulty: 1 },
+  { id: 'th-109', english: 'bad', translation: 'ไม่ดี', romanization: 'mai di', category: 'adjectives', difficulty: 1 },
+  { id: 'th-110', english: 'fast', translation: 'เร็ว', romanization: 'reo', category: 'adjectives', difficulty: 1 },
+  { id: 'th-111', english: 'slow', translation: 'ช้า', romanization: 'cha', category: 'adjectives', difficulty: 1 },
+  { id: 'th-112', english: 'expensive', translation: 'แพง', romanization: 'phaeng', category: 'adjectives', difficulty: 2 },
+  { id: 'th-113', english: 'cheap', translation: 'ถูก', romanization: 'thuk', category: 'adjectives', difficulty: 2 },
+  { id: 'th-114', english: 'new', translation: 'ใหม่', romanization: 'mai', category: 'adjectives', difficulty: 1 },
+  { id: 'th-115', english: 'old', translation: 'เก่า', romanization: 'kao', category: 'adjectives', difficulty: 1 },
+
+  // Phrases
+  { id: 'th-116', english: 'I don\'t understand', translation: 'ฉันไม่เข้าใจ', romanization: 'chan mai khao chai', category: 'phrases', difficulty: 2, exampleSentence: 'ฉันไม่เข้าใจภาษาไทย', exampleTranslation: 'I don\'t understand Thai.' },
+  { id: 'th-117', english: 'please speak slowly', translation: 'กรุณาพูดช้าๆ', romanization: 'karuna phut cha cha', category: 'phrases', difficulty: 2 },
+  { id: 'th-118', english: 'how much', translation: 'เท่าไหร่', romanization: 'thao rai', category: 'phrases', difficulty: 1, exampleSentence: 'นี่ราคาเท่าไหร่?', exampleTranslation: 'How much does this cost?' },
+  { id: 'th-119', english: 'where is the bathroom', translation: 'ห้องน้ำอยู่ที่ไหน', romanization: 'hong nam yu thi nai', category: 'phrases', difficulty: 2 },
+  { id: 'th-120', english: 'I am hungry', translation: 'ฉันหิวข้าว', romanization: 'chan hiu khao', category: 'phrases', difficulty: 1 },
+  { id: 'th-121', english: 'I am lost', translation: 'ฉันหลงทาง', romanization: 'chan long thang', category: 'phrases', difficulty: 2 },
+  { id: 'th-122', english: 'call the police', translation: 'เรียกตำรวจ', romanization: 'riak tam ruat', category: 'phrases', difficulty: 3 },
+
+  // Directions
+  { id: 'th-123', english: 'left', translation: 'ซ้าย', romanization: 'sai', category: 'directions', difficulty: 1 },
+  { id: 'th-124', english: 'right', translation: 'ขวา', romanization: 'khwa', category: 'directions', difficulty: 1 },
+  { id: 'th-125', english: 'straight ahead', translation: 'ตรงไป', romanization: 'trong pai', category: 'directions', difficulty: 1, exampleSentence: 'เดินตรงไปจะเห็นวัด', exampleTranslation: 'Walk straight ahead and you will see the temple.' },
+  { id: 'th-126', english: 'turn', translation: 'เลี้ยว', romanization: 'liao', category: 'directions', difficulty: 1 },
+  { id: 'th-127', english: 'near', translation: 'ใกล้', romanization: 'klai', category: 'directions', difficulty: 1 },
+  { id: 'th-128', english: 'far', translation: 'ไกล', romanization: 'klai', category: 'directions', difficulty: 1 },
+  { id: 'th-129', english: 'north', translation: 'เหนือ', romanization: 'nuea', category: 'directions', difficulty: 2 },
+  { id: 'th-130', english: 'south', translation: 'ใต้', romanization: 'tai', category: 'directions', difficulty: 2 },
+
+  // Shopping
+  { id: 'th-131', english: 'market', translation: 'ตลาด', romanization: 'talat', category: 'shopping', difficulty: 1, exampleSentence: 'ฉันไปตลาดทุกเช้า', exampleTranslation: 'I go to the market every morning.' },
+  { id: 'th-132', english: 'price', translation: 'ราคา', romanization: 'ra kha', category: 'shopping', difficulty: 1 },
+  { id: 'th-133', english: 'discount', translation: 'ส่วนลด', romanization: 'suan lot', category: 'shopping', difficulty: 2 },
+  { id: 'th-134', english: 'cashier', translation: 'แคชเชียร์', romanization: 'khaet chia', category: 'shopping', difficulty: 2 },
+  { id: 'th-135', english: 'receipt', translation: 'ใบเสร็จ', romanization: 'bai set', category: 'shopping', difficulty: 3 },
+  { id: 'th-136', english: 'credit card', translation: 'บัตรเครดิต', romanization: 'bat khre dit', category: 'shopping', difficulty: 2 },
+  { id: 'th-137', english: 'cash', translation: 'เงินสด', romanization: 'ngoen sot', category: 'shopping', difficulty: 2 },
+
+  // Health
+  { id: 'th-138', english: 'doctor', translation: 'หมอ', romanization: 'mo', category: 'health', difficulty: 1, exampleSentence: 'ฉันต้องไปหาหมอ', exampleTranslation: 'I need to see a doctor.' },
+  { id: 'th-139', english: 'hospital', translation: 'โรงพยาบาล', romanization: 'rong pha ya ban', category: 'health', difficulty: 1 },
+  { id: 'th-140', english: 'medicine', translation: 'ยา', romanization: 'ya', category: 'health', difficulty: 1 },
+  { id: 'th-141', english: 'sick', translation: 'ป่วย', romanization: 'puai', category: 'health', difficulty: 1 },
+  { id: 'th-142', english: 'pain', translation: 'ปวด', romanization: 'puat', category: 'health', difficulty: 1 },
+  { id: 'th-143', english: 'fever', translation: 'ไข้', romanization: 'khai', category: 'health', difficulty: 2 },
+  { id: 'th-144', english: 'allergy', translation: 'แพ้', romanization: 'phae', category: 'health', difficulty: 3 },
+  { id: 'th-145', english: 'pharmacy', translation: 'ร้านขายยา', romanization: 'ran khai ya', category: 'health', difficulty: 2 },
+
+  // Education
+  { id: 'th-146', english: 'school', translation: 'โรงเรียน', romanization: 'rong rian', category: 'education', difficulty: 1, exampleSentence: 'ฉันไปโรงเรียนทุกวัน', exampleTranslation: 'I go to school every day.' },
+  { id: 'th-147', english: 'teacher', translation: 'ครู', romanization: 'khru', category: 'education', difficulty: 1 },
+  { id: 'th-148', english: 'student', translation: 'นักเรียน', romanization: 'nak rian', category: 'education', difficulty: 1 },
+  { id: 'th-149', english: 'book', translation: 'หนังสือ', romanization: 'nang sue', category: 'education', difficulty: 1 },
+  { id: 'th-150', english: 'class', translation: 'ชั้นเรียน', romanization: 'chan rian', category: 'education', difficulty: 2 },
+  { id: 'th-151', english: 'university', translation: 'มหาวิทยาลัย', romanization: 'ma ha wit tha ya lai', category: 'education', difficulty: 2 },
+  { id: 'th-152', english: 'exam', translation: 'สอบ', romanization: 'sop', category: 'education', difficulty: 2 },
+  { id: 'th-153', english: 'homework', translation: 'การบ้าน', romanization: 'kan ban', category: 'education', difficulty: 2 },
+  { id: 'th-154', english: 'pen', translation: 'ปากกา', romanization: 'pak ka', category: 'education', difficulty: 1 },
+  { id: 'th-155', english: 'notebook', translation: 'สมุด', romanization: 'sa mut', category: 'education', difficulty: 1 },
+];
+
+export default thaiVocab;
