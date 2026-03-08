@@ -1,0 +1,193 @@
+import type { VocabEntry } from '../../types';
+
+export const portugueseVocab: VocabEntry[] = [
+  // Greetings
+  { id: 'pt-001', english: 'hello', translation: 'olá', category: 'greetings', difficulty: 1, exampleSentence: 'Olá! Como vai você?', exampleTranslation: 'Hello! How are you?' },
+  { id: 'pt-002', english: 'goodbye', translation: 'tchau', category: 'greetings', difficulty: 1 },
+  { id: 'pt-003', english: 'good morning', translation: 'bom dia', category: 'greetings', difficulty: 1 },
+  { id: 'pt-004', english: 'good afternoon', translation: 'boa tarde', category: 'greetings', difficulty: 1 },
+  { id: 'pt-005', english: 'good evening / good night', translation: 'boa noite', category: 'greetings', difficulty: 1 },
+  { id: 'pt-006', english: 'thank you', translation: 'obrigado / obrigada', category: 'greetings', difficulty: 1, exampleSentence: 'Muito obrigado pela sua ajuda!', exampleTranslation: 'Thank you very much for your help!' },
+  { id: 'pt-007', english: 'you\'re welcome', translation: 'de nada', category: 'greetings', difficulty: 1 },
+  { id: 'pt-008', english: 'excuse me / sorry', translation: 'com licença / desculpe', category: 'greetings', difficulty: 1 },
+  { id: 'pt-009', english: 'nice to meet you', translation: 'prazer em conhecê-lo', category: 'greetings', difficulty: 2 },
+  { id: 'pt-010', english: 'how are you', translation: 'como vai você?', category: 'greetings', difficulty: 1 },
+
+  // Numbers
+  { id: 'pt-011', english: 'one', translation: 'um / uma', category: 'numbers', difficulty: 1 },
+  { id: 'pt-012', english: 'two', translation: 'dois / duas', category: 'numbers', difficulty: 1 },
+  { id: 'pt-013', english: 'three', translation: 'três', category: 'numbers', difficulty: 1 },
+  { id: 'pt-014', english: 'four', translation: 'quatro', category: 'numbers', difficulty: 1 },
+  { id: 'pt-015', english: 'five', translation: 'cinco', category: 'numbers', difficulty: 1 },
+  { id: 'pt-016', english: 'six', translation: 'seis', category: 'numbers', difficulty: 1 },
+  { id: 'pt-017', english: 'seven', translation: 'sete', category: 'numbers', difficulty: 1 },
+  { id: 'pt-018', english: 'eight', translation: 'oito', category: 'numbers', difficulty: 1 },
+  { id: 'pt-019', english: 'nine', translation: 'nove', category: 'numbers', difficulty: 1 },
+  { id: 'pt-020', english: 'ten', translation: 'dez', category: 'numbers', difficulty: 1 },
+  { id: 'pt-021', english: 'twenty', translation: 'vinte', category: 'numbers', difficulty: 1 },
+  { id: 'pt-022', english: 'hundred', translation: 'cem / cento', category: 'numbers', difficulty: 2 },
+  { id: 'pt-023', english: 'thousand', translation: 'mil', category: 'numbers', difficulty: 2 },
+
+  // Colors
+  { id: 'pt-024', english: 'red', translation: 'vermelho', category: 'colors', difficulty: 1 },
+  { id: 'pt-025', english: 'blue', translation: 'azul', category: 'colors', difficulty: 1 },
+  { id: 'pt-026', english: 'white', translation: 'branco', category: 'colors', difficulty: 1 },
+  { id: 'pt-027', english: 'black', translation: 'preto', category: 'colors', difficulty: 1 },
+  { id: 'pt-028', english: 'yellow', translation: 'amarelo', category: 'colors', difficulty: 1 },
+  { id: 'pt-029', english: 'green', translation: 'verde', category: 'colors', difficulty: 1 },
+  { id: 'pt-030', english: 'orange', translation: 'laranja', category: 'colors', difficulty: 1 },
+  { id: 'pt-031', english: 'purple', translation: 'roxo / violeta', category: 'colors', difficulty: 2 },
+  { id: 'pt-032', english: 'pink', translation: 'rosa', category: 'colors', difficulty: 1 },
+  { id: 'pt-033', english: 'brown', translation: 'marrom', category: 'colors', difficulty: 2 },
+  { id: 'pt-034', english: 'gray', translation: 'cinza', category: 'colors', difficulty: 2 },
+
+  // Food
+  { id: 'pt-035', english: 'rice and beans', translation: 'arroz e feijão', category: 'food', difficulty: 1, exampleSentence: 'Arroz e feijão é o prato típico do Brasil.', exampleTranslation: 'Rice and beans is Brazil\'s typical dish.' },
+  { id: 'pt-036', english: 'bread', translation: 'pão', category: 'food', difficulty: 1 },
+  { id: 'pt-037', english: 'water', translation: 'água', category: 'food', difficulty: 1 },
+  { id: 'pt-038', english: 'coffee', translation: 'café', category: 'food', difficulty: 1, exampleSentence: 'Você quer um café?', exampleTranslation: 'Do you want a coffee?' },
+  { id: 'pt-039', english: 'juice', translation: 'suco', category: 'food', difficulty: 1 },
+  { id: 'pt-040', english: 'meat', translation: 'carne', category: 'food', difficulty: 1 },
+  { id: 'pt-041', english: 'chicken', translation: 'frango', category: 'food', difficulty: 1 },
+  { id: 'pt-042', english: 'fish', translation: 'peixe', category: 'food', difficulty: 1 },
+  { id: 'pt-043', english: 'fruit', translation: 'fruta', category: 'food', difficulty: 1 },
+  { id: 'pt-044', english: 'vegetable', translation: 'legume / verdura', category: 'food', difficulty: 2 },
+  { id: 'pt-045', english: 'cheese', translation: 'queijo', category: 'food', difficulty: 1 },
+  { id: 'pt-046', english: 'barbecue', translation: 'churrasco', category: 'food', difficulty: 2, exampleSentence: 'Vamos fazer um churrasco no fim de semana?', exampleTranslation: 'Shall we have a barbecue on the weekend?' },
+
+  // Travel
+  { id: 'pt-047', english: 'airplane', translation: 'avião', category: 'travel', difficulty: 1, exampleSentence: 'Eu vou de avião para São Paulo.', exampleTranslation: 'I am going to São Paulo by plane.' },
+  { id: 'pt-048', english: 'airport', translation: 'aeroporto', category: 'travel', difficulty: 2 },
+  { id: 'pt-049', english: 'bus', translation: 'ônibus', category: 'travel', difficulty: 1 },
+  { id: 'pt-050', english: 'train', translation: 'trem', category: 'travel', difficulty: 1 },
+  { id: 'pt-051', english: 'hotel', translation: 'hotel', category: 'travel', difficulty: 1 },
+  { id: 'pt-052', english: 'ticket', translation: 'passagem / ingresso', category: 'travel', difficulty: 2 },
+  { id: 'pt-053', english: 'passport', translation: 'passaporte', category: 'travel', difficulty: 2 },
+  { id: 'pt-054', english: 'luggage', translation: 'bagagem', category: 'travel', difficulty: 2 },
+  { id: 'pt-055', english: 'beach', translation: 'praia', category: 'travel', difficulty: 1, exampleSentence: 'A praia de Copacabana é famosa no mundo inteiro.', exampleTranslation: 'Copacabana beach is famous worldwide.' },
+
+  // Family
+  { id: 'pt-056', english: 'mother', translation: 'mãe', category: 'family', difficulty: 1 },
+  { id: 'pt-057', english: 'father', translation: 'pai', category: 'family', difficulty: 1 },
+  { id: 'pt-058', english: 'sister', translation: 'irmã', category: 'family', difficulty: 1 },
+  { id: 'pt-059', english: 'brother', translation: 'irmão', category: 'family', difficulty: 1 },
+  { id: 'pt-060', english: 'grandmother', translation: 'avó', category: 'family', difficulty: 1 },
+  { id: 'pt-061', english: 'grandfather', translation: 'avô', category: 'family', difficulty: 1 },
+  { id: 'pt-062', english: 'son', translation: 'filho', category: 'family', difficulty: 1 },
+  { id: 'pt-063', english: 'daughter', translation: 'filha', category: 'family', difficulty: 1 },
+  { id: 'pt-064', english: 'friend', translation: 'amigo / amiga', category: 'family', difficulty: 1 },
+  { id: 'pt-065', english: 'husband', translation: 'marido', category: 'family', difficulty: 2 },
+  { id: 'pt-066', english: 'wife', translation: 'esposa', category: 'family', difficulty: 2 },
+
+  // Time
+  { id: 'pt-067', english: 'today', translation: 'hoje', category: 'time', difficulty: 1 },
+  { id: 'pt-068', english: 'tomorrow', translation: 'amanhã', category: 'time', difficulty: 1 },
+  { id: 'pt-069', english: 'yesterday', translation: 'ontem', category: 'time', difficulty: 1 },
+  { id: 'pt-070', english: 'morning', translation: 'manhã', category: 'time', difficulty: 1 },
+  { id: 'pt-071', english: 'afternoon', translation: 'tarde', category: 'time', difficulty: 1 },
+  { id: 'pt-072', english: 'night', translation: 'noite', category: 'time', difficulty: 1 },
+  { id: 'pt-073', english: 'now', translation: 'agora', category: 'time', difficulty: 1 },
+  { id: 'pt-074', english: 'week', translation: 'semana', category: 'time', difficulty: 1 },
+  { id: 'pt-075', english: 'month', translation: 'mês', category: 'time', difficulty: 2 },
+  { id: 'pt-076', english: 'year', translation: 'ano', category: 'time', difficulty: 1 },
+  { id: 'pt-077', english: 'hour', translation: 'hora', category: 'time', difficulty: 1, exampleSentence: 'Que horas são?', exampleTranslation: 'What time is it?' },
+
+  // Weather
+  { id: 'pt-078', english: 'sun / sunny', translation: 'sol / ensolarado', category: 'weather', difficulty: 1, exampleSentence: 'Hoje está fazendo sol.', exampleTranslation: 'It is sunny today.' },
+  { id: 'pt-079', english: 'rain', translation: 'chuva', category: 'weather', difficulty: 1, exampleSentence: 'Está chovendo muito hoje.', exampleTranslation: 'It is raining a lot today.' },
+  { id: 'pt-080', english: 'wind', translation: 'vento', category: 'weather', difficulty: 1 },
+  { id: 'pt-081', english: 'cloud / cloudy', translation: 'nuvem / nublado', category: 'weather', difficulty: 2 },
+  { id: 'pt-082', english: 'hot', translation: 'quente / calor', category: 'weather', difficulty: 1 },
+  { id: 'pt-083', english: 'cold', translation: 'frio', category: 'weather', difficulty: 1 },
+  { id: 'pt-084', english: 'thunderstorm', translation: 'tempestade', category: 'weather', difficulty: 3 },
+  { id: 'pt-085', english: 'humidity', translation: 'umidade', category: 'weather', difficulty: 3 },
+
+  // Body
+  { id: 'pt-086', english: 'head', translation: 'cabeça', category: 'body', difficulty: 1 },
+  { id: 'pt-087', english: 'eye', translation: 'olho', category: 'body', difficulty: 1 },
+  { id: 'pt-088', english: 'ear', translation: 'orelha', category: 'body', difficulty: 1 },
+  { id: 'pt-089', english: 'nose', translation: 'nariz', category: 'body', difficulty: 1 },
+  { id: 'pt-090', english: 'mouth', translation: 'boca', category: 'body', difficulty: 1 },
+  { id: 'pt-091', english: 'hand', translation: 'mão', category: 'body', difficulty: 1 },
+  { id: 'pt-092', english: 'foot / leg', translation: 'pé / perna', category: 'body', difficulty: 1 },
+  { id: 'pt-093', english: 'back', translation: 'costas', category: 'body', difficulty: 2 },
+  { id: 'pt-094', english: 'stomach', translation: 'estômago / barriga', category: 'body', difficulty: 2 },
+  { id: 'pt-095', english: 'heart', translation: 'coração', category: 'body', difficulty: 2 },
+
+  // Verbs
+  { id: 'pt-096', english: 'to eat', translation: 'comer', category: 'verbs', difficulty: 1, exampleSentence: 'Eu gosto de comer pizza.', exampleTranslation: 'I like to eat pizza.' },
+  { id: 'pt-097', english: 'to drink', translation: 'beber / tomar', category: 'verbs', difficulty: 1 },
+  { id: 'pt-098', english: 'to go', translation: 'ir', category: 'verbs', difficulty: 1 },
+  { id: 'pt-099', english: 'to come', translation: 'vir', category: 'verbs', difficulty: 1 },
+  { id: 'pt-100', english: 'to speak', translation: 'falar', category: 'verbs', difficulty: 1, exampleSentence: 'Você fala português?', exampleTranslation: 'Do you speak Portuguese?' },
+  { id: 'pt-101', english: 'to listen', translation: 'escutar / ouvir', category: 'verbs', difficulty: 1 },
+  { id: 'pt-102', english: 'to see / to watch', translation: 'ver / assistir', category: 'verbs', difficulty: 1 },
+  { id: 'pt-103', english: 'to write', translation: 'escrever', category: 'verbs', difficulty: 2 },
+  { id: 'pt-104', english: 'to read', translation: 'ler', category: 'verbs', difficulty: 2 },
+  { id: 'pt-105', english: 'to buy', translation: 'comprar', category: 'verbs', difficulty: 2 },
+  { id: 'pt-106', english: 'to sleep', translation: 'dormir', category: 'verbs', difficulty: 1 },
+  { id: 'pt-107', english: 'to work', translation: 'trabalhar', category: 'verbs', difficulty: 2, exampleSentence: 'Eu trabalho em São Paulo.', exampleTranslation: 'I work in São Paulo.' },
+
+  // Adjectives
+  { id: 'pt-108', english: 'big', translation: 'grande', category: 'adjectives', difficulty: 1 },
+  { id: 'pt-109', english: 'small', translation: 'pequeno', category: 'adjectives', difficulty: 1 },
+  { id: 'pt-110', english: 'new', translation: 'novo', category: 'adjectives', difficulty: 1 },
+  { id: 'pt-111', english: 'old', translation: 'velho / antigo', category: 'adjectives', difficulty: 2 },
+  { id: 'pt-112', english: 'delicious', translation: 'delicioso / gostoso', category: 'adjectives', difficulty: 1, exampleSentence: 'Essa comida está muito gostosa!', exampleTranslation: 'This food is very delicious!' },
+  { id: 'pt-113', english: 'beautiful', translation: 'lindo / bonito', category: 'adjectives', difficulty: 1 },
+  { id: 'pt-114', english: 'expensive', translation: 'caro', category: 'adjectives', difficulty: 2 },
+  { id: 'pt-115', english: 'cheap', translation: 'barato', category: 'adjectives', difficulty: 2 },
+  { id: 'pt-116', english: 'happy', translation: 'feliz', category: 'adjectives', difficulty: 1 },
+  { id: 'pt-117', english: 'tired', translation: 'cansado', category: 'adjectives', difficulty: 2 },
+
+  // Phrases
+  { id: 'pt-118', english: 'I understand', translation: 'eu entendo / entendi', category: 'phrases', difficulty: 1 },
+  { id: 'pt-119', english: 'I don\'t understand', translation: 'não entendo / não entendi', category: 'phrases', difficulty: 1, exampleSentence: 'Desculpe, não entendi. Pode repetir?', exampleTranslation: 'Sorry, I didn\'t understand. Can you repeat?' },
+  { id: 'pt-120', english: 'can you help me?', translation: 'pode me ajudar?', category: 'phrases', difficulty: 2 },
+  { id: 'pt-121', english: 'where is the bathroom?', translation: 'onde fica o banheiro?', category: 'phrases', difficulty: 1 },
+  { id: 'pt-122', english: 'I don\'t speak Portuguese well', translation: 'não falo português muito bem', category: 'phrases', difficulty: 2 },
+  { id: 'pt-123', english: 'what is your name?', translation: 'qual é o seu nome?', category: 'phrases', difficulty: 1, exampleSentence: 'Qual é o seu nome? O meu nome é João.', exampleTranslation: 'What is your name? My name is João.' },
+  { id: 'pt-124', english: 'how much does it cost?', translation: 'quanto custa?', category: 'phrases', difficulty: 1 },
+
+  // Directions
+  { id: 'pt-125', english: 'right', translation: 'direita', category: 'directions', difficulty: 1 },
+  { id: 'pt-126', english: 'left', translation: 'esquerda', category: 'directions', difficulty: 1 },
+  { id: 'pt-127', english: 'straight ahead', translation: 'em frente / reto', category: 'directions', difficulty: 1, exampleSentence: 'Siga em frente e depois vire à direita.', exampleTranslation: 'Go straight ahead and then turn right.' },
+  { id: 'pt-128', english: 'north', translation: 'norte', category: 'directions', difficulty: 2 },
+  { id: 'pt-129', english: 'south', translation: 'sul', category: 'directions', difficulty: 2 },
+  { id: 'pt-130', english: 'east', translation: 'leste', category: 'directions', difficulty: 2 },
+  { id: 'pt-131', english: 'west', translation: 'oeste', category: 'directions', difficulty: 2 },
+  { id: 'pt-132', english: 'far', translation: 'longe', category: 'directions', difficulty: 2 },
+  { id: 'pt-133', english: 'near', translation: 'perto', category: 'directions', difficulty: 1 },
+
+  // Shopping
+  { id: 'pt-134', english: 'store / shop', translation: 'loja', category: 'shopping', difficulty: 1, exampleSentence: 'Essa loja tem roupas muito bonitas.', exampleTranslation: 'This store has very beautiful clothes.' },
+  { id: 'pt-135', english: 'money', translation: 'dinheiro', category: 'shopping', difficulty: 1 },
+  { id: 'pt-136', english: 'credit card', translation: 'cartão de crédito', category: 'shopping', difficulty: 2 },
+  { id: 'pt-137', english: 'receipt', translation: 'recibo / nota fiscal', category: 'shopping', difficulty: 2 },
+  { id: 'pt-138', english: 'sale / discount', translation: 'promoção / desconto', category: 'shopping', difficulty: 2 },
+  { id: 'pt-139', english: 'shopping mall', translation: 'shopping', category: 'shopping', difficulty: 1 },
+
+  // Health
+  { id: 'pt-140', english: 'hospital', translation: 'hospital', category: 'health', difficulty: 2, exampleSentence: 'Preciso ir ao hospital.', exampleTranslation: 'I need to go to the hospital.' },
+  { id: 'pt-141', english: 'doctor', translation: 'médico', category: 'health', difficulty: 2 },
+  { id: 'pt-142', english: 'medicine', translation: 'remédio / medicamento', category: 'health', difficulty: 2 },
+  { id: 'pt-143', english: 'pain', translation: 'dor', category: 'health', difficulty: 2 },
+  { id: 'pt-144', english: 'fever', translation: 'febre', category: 'health', difficulty: 2 },
+  { id: 'pt-145', english: 'allergy', translation: 'alergia', category: 'health', difficulty: 3 },
+  { id: 'pt-146', english: 'pharmacy', translation: 'farmácia', category: 'health', difficulty: 2 },
+
+  // Education
+  { id: 'pt-147', english: 'school', translation: 'escola', category: 'education', difficulty: 1, exampleSentence: 'As crianças vão para a escola de segunda a sexta.', exampleTranslation: 'Children go to school Monday through Friday.' },
+  { id: 'pt-148', english: 'university', translation: 'universidade', category: 'education', difficulty: 2 },
+  { id: 'pt-149', english: 'teacher', translation: 'professor / professora', category: 'education', difficulty: 1 },
+  { id: 'pt-150', english: 'student', translation: 'aluno / estudante', category: 'education', difficulty: 1 },
+  { id: 'pt-151', english: 'textbook', translation: 'livro didático', category: 'education', difficulty: 3 },
+  { id: 'pt-152', english: 'homework', translation: 'tarefa / dever de casa', category: 'education', difficulty: 2 },
+  { id: 'pt-153', english: 'exam / test', translation: 'prova / exame', category: 'education', difficulty: 2, exampleSentence: 'Tenho prova amanhã e preciso estudar.', exampleTranslation: 'I have a test tomorrow and I need to study.' },
+  { id: 'pt-154', english: 'library', translation: 'biblioteca', category: 'education', difficulty: 2 },
+  { id: 'pt-155', english: 'to study', translation: 'estudar', category: 'education', difficulty: 1, exampleSentence: 'Eu estou estudando português.', exampleTranslation: 'I am studying Portuguese.' },
+  { id: 'pt-156', english: 'language', translation: 'idioma / língua', category: 'education', difficulty: 2 },
+];
+
+export default portugueseVocab;
