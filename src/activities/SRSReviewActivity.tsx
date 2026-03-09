@@ -18,9 +18,11 @@ interface SessionResult {
 }
 
 export default function SRSReviewActivity({ language, langProgress, onAnswer, onExit }: Props) {
-  const allIds = langProgress.unlockedVocab;
-  const reviewQueue = getReviewQueue(langProgress.srsCards, allIds, 8, 40);
-  const queue = reviewQueue.filter((id) => getVocabById(language.code, id));
+  const [queue] = useState<string[]>(() => {
+    const allIds = langProgress.unlockedVocab;
+    const reviewQueue = getReviewQueue(langProgress.srsCards, allIds, 8, 40);
+    return reviewQueue.filter((id) => getVocabById(language.code, id));
+  });
 
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResult[]>([]);

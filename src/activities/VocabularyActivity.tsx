@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Volume2, Mic, Check, RotateCcw, ChevronRight } from 'lucide-react';
 import type { Language, LanguageProgress, VocabEntry, QuizMode } from '../types';
 import { getVocabById, getDistractors } from '../data/vocabIndex';
@@ -33,10 +33,6 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
   const [mcDirection, setMcDirection] = useState<'en-tl' | 'tl-en'>('en-tl');
   const [typeDirection, setTypeDirection] = useState<'en-tl' | 'tl-en'>('en-tl');
 
-  const vocab = langProgress.unlockedVocab
-    .map((id) => getVocabById(language.code, id))
-    .filter((v): v is VocabEntry => v !== undefined);
-
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState(false);
   const [xpTotal, setXpTotal] = useState(0);
@@ -48,14 +44,16 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
   const [typeResult, setTypeResult] = useState<null | 'exact' | 'close' | 'wrong'>(null);
   const [isListening, setIsListening] = useState(false);
   const [pronResult, setPronResult] = useState<null | 'exact' | 'close' | 'wrong'>(null);
+  const [sessionVocab] = useState<VocabEntry[]>(() => {
+    const initialVocab = langProgress.unlockedVocab
+      .map((id) => getVocabById(language.code, id))
+      .filter((v): v is VocabEntry => v !== undefined);
+    const shuffled = [...initialVocab].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(30, shuffled.length));
+  });
 
   const startTimeRef = useRef(Date.now());
   const { speak, recognize, isSpeechSupported, isRecognitionSupported } = useSpeech();
-
-  const sessionVocab = useMemo(() => {
-    const shuffled = [...vocab].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(30, shuffled.length));
-  }, [vocab]);
 
   const current = sessionVocab[index];
 

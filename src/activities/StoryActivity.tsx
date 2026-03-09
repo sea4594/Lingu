@@ -67,7 +67,7 @@ function buildPage(entries: VocabEntry[]): StoryPage {
 
 export default function StoryActivity({ language, langProgress, onAnswer, onExit }: StoryActivityProps) {
   const vocab = getVocabForLanguage(language.code);
-  const stories = buildStories(vocab, langProgress.unlockedVocab);
+  const [stories] = useState<StoryPage[]>(() => buildStories(vocab, langProgress.unlockedVocab));
   const [pageIndex, setPageIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [popup, setPopup] = useState<WordPopup | null>(null);

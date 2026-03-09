@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Volume2 } from 'lucide-react';
 import type { Language, LanguageProgress, VocabEntry } from '../types';
 import { getVocabById, getDistractors } from '../data/vocabIndex';
@@ -15,10 +15,6 @@ type Speed = 'slow' | 'normal' | 'fast';
 const SPEED_RATE: Record<Speed, number> = { slow: 0.5, normal: 0.9, fast: 1.3 };
 
 export default function ListeningActivity({ language, langProgress, onAnswer, onExit }: Props) {
-  const vocab: VocabEntry[] = langProgress.unlockedVocab
-    .map((id) => getVocabById(language.code, id))
-    .filter((v): v is VocabEntry => v !== undefined);
-
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
@@ -28,14 +24,16 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
   const [feedback, setFeedback] = useState<null | { correct: boolean }>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [promptTarget, setPromptTarget] = useState<'word' | 'sentence'>('word');
+  const [sessionVocab] = useState<VocabEntry[]>(() => {
+    const initialVocab = langProgress.unlockedVocab
+      .map((id) => getVocabById(language.code, id))
+      .filter((v): v is VocabEntry => v !== undefined);
+    const shuffled = [...initialVocab].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(shuffled.length, 24));
+  });
 
   const startTimeRef = useRef(Date.now());
   const { speak, isSpeechSupported } = useSpeech();
-
-  const sessionVocab = useMemo(() => {
-    const shuffled = [...vocab].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(shuffled.length, 24));
-  }, [vocab]);
 
   const current = sessionVocab[index];
   const sessionLength = sessionVocab.length;
@@ -70,7 +68,7 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  if (vocab.length === 0) {
+  if (sessionVocab.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
         <div className="text-center">
