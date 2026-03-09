@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowLeft, Volume2, Mic, Check, RotateCcw, ChevronRight } from 'lucide-react';
 import type { Language, LanguageProgress, VocabEntry, QuizMode } from '../types';
 import { getVocabById, getDistractors } from '../data/vocabIndex';
@@ -38,6 +38,7 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
     .filter((v): v is VocabEntry => v !== undefined);
 
   const [index, setIndex] = useState(0);
+  const [done, setDone] = useState(false);
   const [xpTotal, setXpTotal] = useState(0);
   const [feedback, setFeedback] = useState<null | { correct: boolean; message: string; xp: number }>(null);
   const [flipped, setFlipped] = useState(false);
@@ -51,7 +52,12 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
   const startTimeRef = useRef(Date.now());
   const { speak, recognize, isSpeechSupported, isRecognitionSupported } = useSpeech();
 
-  const current = vocab[index];
+  const sessionVocab = useMemo(() => {
+    const shuffled = [...vocab].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(30, shuffled.length));
+  }, [vocab]);
+
+  const current = sessionVocab[index];
 
   const buildOptions = useCallback(
     (entry: VocabEntry, field: 'translation' | 'english') => {
@@ -83,13 +89,41 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, mode, mcDirection]);
 
-  if (!current) {
+  if (sessionVocab.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center p-8">
           <p className="text-xl text-gray-600">No vocabulary unlocked yet!</p>
           <button onClick={onExit} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg">
             Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
+          <div className="text-5xl mb-4">🚀</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">Session Complete</h2>
+          <p className="text-gray-500 mb-6">You finished your vocabulary practice set.</p>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-indigo-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-indigo-600">{sessionVocab.length}</p>
+              <p className="text-xs text-gray-500">Questions</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-amber-600">+{xpTotal}</p>
+              <p className="text-xs text-gray-500">XP</p>
+            </div>
+          </div>
+          <button
+            onClick={onExit}
+            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            Back to Home
           </button>
         </div>
       </div>
@@ -104,7 +138,11 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
     onAnswer(current.id, correct, timeTaken());
     setTimeout(() => {
       setFeedback(null);
-      setIndex((i) => (i + 1) % vocab.length);
+      if (index + 1 >= sessionVocab.length) {
+        setDone(true);
+      } else {
+        setIndex((i) => i + 1);
+      }
     }, 1400);
   };
 
@@ -172,7 +210,7 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
           <ArrowLeft size={20} /> <span className="text-sm font-medium">Exit</span>
         </button>
         <div className="text-sm font-semibold text-gray-700">
-          {index + 1} / {vocab.length} words
+          {index + 1} / {sessionVocab.length} words
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
@@ -188,7 +226,7 @@ export default function VocabularyActivity({ language, langProgress, onAnswer, o
       <div className="h-1.5 bg-gray-200">
         <div
           className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
-          style={{ width: `${((index + 1) / vocab.length) * 100}%` }}
+          style={{ width: `${((index + 1) / sessionVocab.length) * 100}%` }}
         />
       </div>
 

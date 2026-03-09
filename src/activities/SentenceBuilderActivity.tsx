@@ -7,6 +7,7 @@ import { useSpeech } from '../hooks/useSpeech';
 interface Props {
   language: Language;
   langProgress: LanguageProgress;
+  onAnswer: (vocabId: string, correct: boolean, timeTaken: number) => void;
   onExit: () => void;
 }
 
@@ -18,18 +19,62 @@ interface SentenceChallenge {
   answer: string[];
 }
 
-function buildChallenges(vocab: VocabEntry[]): SentenceChallenge[] {
+const tokenizeForNoSpaceScripts = (sentence: string): string[] =>
+  sentence
+    .split('')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .filter((segment) => /\p{L}|\p{N}/u.test(segment));
+
+const segmentSentence = (sentence: string, locale: string): string[] => {
+  const cleaned = sentence.trim();
+  if (!cleaned) return [];
+
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    const segmenter = new Intl.Segmenter(locale, { granularity: 'word' });
+    const segments = Array.from(segmenter.segment(cleaned))
+      .map((segment) => segment.segment.trim())
+      .filter((segment) => segment.length > 0)
+      .filter((segment) => /\p{L}|\p{N}/u.test(segment));
+
+    if (segments.length > 0) return segments;
+  }
+
+  const noSpaceLocale = /^(zh|ja|th|ko)/i.test(locale);
+  if (noSpaceLocale) {
+    const charSegments = tokenizeForNoSpaceScripts(cleaned);
+    if (charSegments.length > 1) return charSegments;
+  }
+
+  const bySpace = cleaned.split(/\s+/).filter(Boolean);
+  if (bySpace.length > 0) return bySpace;
+
+  return cleaned.split('').filter(Boolean);
+};
+
+function buildChallenges(vocab: VocabEntry[], locale: string): SentenceChallenge[] {
+  const seed = [...vocab].sort(() => Math.random() - 0.5);
+  const sentenceTokenPool = vocab
+    .filter((v) => v.exampleSentence)
+    .flatMap((v) => segmentSentence(v.exampleSentence ?? '', locale));
+
   return vocab
     .filter((v) => v.exampleSentence && v.exampleTranslation)
-    .slice(0, 10)
+    .concat(seed.filter((v) => v.exampleSentence && v.exampleTranslation))
     .map((v) => {
       const target = v.exampleSentence!;
-      // Split sentence into tokens (words + punctuation attached), shuffle
-      const rawWords = target.split(/\s+/).filter(Boolean);
-      const shuffled = [...rawWords].sort(() => Math.random() - 0.5);
+      const rawWords = segmentSentence(target, locale);
+      if (rawWords.length < 2) return null;
+
+      const decoys = sentenceTokenPool
+        .filter((token) => !rawWords.includes(token))
+        .sort(() => Math.random() - 0.5)
+        .slice(0, Math.min(2, Math.max(1, Math.floor(rawWords.length / 4))));
+
+      const shuffled = [...rawWords, ...decoys].sort(() => Math.random() - 0.5);
       // Ensure shuffle is actually different
       let attempts = 0;
-      while (shuffled.join(' ') === target && attempts < 10) {
+      while (shuffled.join(' ') === [...rawWords, ...decoys].join(' ') && attempts < 10) {
         shuffled.sort(() => Math.random() - 0.5);
         attempts++;
       }
@@ -40,16 +85,18 @@ function buildChallenges(vocab: VocabEntry[]): SentenceChallenge[] {
         words: shuffled,
         answer: rawWords,
       };
-    });
+    })
+    .filter((challenge): challenge is SentenceChallenge => challenge !== null)
+    .slice(0, 24);
 }
 
-export default function SentenceBuilderActivity({ language, langProgress, onExit }: Props) {
+export default function SentenceBuilderActivity({ language, langProgress, onAnswer, onExit }: Props) {
   const allVocab: VocabEntry[] = langProgress.unlockedVocab
     .map((id) => getVocabById(language.code, id))
     .filter((v): v is VocabEntry => v !== undefined);
 
   const [challenges] = useState<SentenceChallenge[]>(() => {
-    const c = buildChallenges(allVocab);
+    const c = buildChallenges(allVocab, language.speechCode ?? language.code);
     return c.length > 0 ? c : [];
   });
 
@@ -59,6 +106,7 @@ export default function SentenceBuilderActivity({ language, langProgress, onExit
   const [submitted, setSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [score, setScore] = useState(0);
+  const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const { speak, isSpeechSupported } = useSpeech();
 
@@ -70,6 +118,7 @@ export default function SentenceBuilderActivity({ language, langProgress, onExit
     setPlaced([]);
     setSubmitted(false);
     setIsCorrect(false);
+    setStartedAt(Date.now());
   }, [index, current]);
 
   if (challenges.length === 0) {
@@ -122,6 +171,7 @@ export default function SentenceBuilderActivity({ language, langProgress, onExit
     const correct = placed.join(' ') === current.answer.join(' ');
     setIsCorrect(correct);
     setSubmitted(true);
+    onAnswer(current.vocab.id, correct, Date.now() - startedAt);
     if (correct) setScore((s) => s + 1);
     if (correct) speak(current.targetSentence, { lang: language.speechCode ?? language.code });
   };

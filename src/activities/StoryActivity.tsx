@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import type { MouseEvent } from 'react';
 import { ArrowLeft, Volume2, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Language, LanguageProgress, VocabEntry } from '../types';
 import { getVocabForLanguage } from '../data/vocabIndex';
@@ -7,6 +8,7 @@ import { useSpeech } from '../hooks/useSpeech';
 interface StoryActivityProps {
   language: Language;
   langProgress: LanguageProgress;
+  onAnswer: (vocabId: string, correct: boolean, timeTaken: number) => void;
   onExit: () => void;
 }
 
@@ -26,17 +28,27 @@ interface WordPopup {
 
 // Build simple stories from vocabulary entries with example sentences
 function buildStories(vocab: VocabEntry[], unlockedIds: string[]): StoryPage[] {
-  const unlocked = vocab.filter((v) => unlockedIds.includes(v.id) && v.exampleSentence);
+  const unlocked = vocab
+    .filter((v) => unlockedIds.includes(v.id) && v.exampleSentence && v.exampleTranslation)
+    .sort(() => Math.random() - 0.5);
   if (unlocked.length === 0) {
     // Fallback: use any vocab with example sentences
-    const withExamples = vocab.filter((v) => v.exampleSentence).slice(0, 6);
+    const withExamples = vocab
+      .filter((v) => v.exampleSentence && v.exampleTranslation)
+      .slice(0, 9);
     if (withExamples.length === 0) return [];
-    return [buildPage(withExamples)];
+    return withExamples.reduce<StoryPage[]>((pages, _, idx) => {
+      if (idx % 3 === 0) {
+        const chunk = withExamples.slice(idx, idx + 3);
+        if (chunk.length > 0) pages.push(buildPage(chunk));
+      }
+      return pages;
+    }, []);
   }
 
   const pages: StoryPage[] = [];
-  const chunkSize = 4;
-  for (let i = 0; i < Math.min(unlocked.length, 12); i += chunkSize) {
+  const chunkSize = 3;
+  for (let i = 0; i < Math.min(unlocked.length, 90); i += chunkSize) {
     const chunk = unlocked.slice(i, i + chunkSize);
     if (chunk.length > 0) pages.push(buildPage(chunk));
   }
@@ -53,16 +65,33 @@ function buildPage(entries: VocabEntry[]): StoryPage {
   };
 }
 
-export default function StoryActivity({ language, langProgress, onExit }: StoryActivityProps) {
+export default function StoryActivity({ language, langProgress, onAnswer, onExit }: StoryActivityProps) {
   const vocab = getVocabForLanguage(language.code);
   const stories = buildStories(vocab, langProgress.unlockedVocab);
   const [pageIndex, setPageIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [popup, setPopup] = useState<WordPopup | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [questionStartAt, setQuestionStartAt] = useState(() => Date.now());
   const { speak, isSpeechSupported } = useSpeech();
 
   const currentPage = stories[pageIndex];
+  const quizTarget = currentPage?.vocab[0];
+  const quizOptions = useMemo(() => {
+    if (!currentPage) return [];
+    return [
+      ...new Set(
+        [
+          quizTarget?.english,
+          ...currentPage.vocab.slice(1).map((v) => v.english),
+          ...vocab.filter((v) => v.category === quizTarget?.category).slice(0, 2).map((v) => v.english),
+        ].filter((word): word is string => Boolean(word))
+      ),
+    ]
+      .slice(0, 4)
+      .sort(() => Math.random() - 0.5);
+  }, [currentPage, quizTarget?.category, quizTarget?.english, vocab]);
 
   const handleSpeak = useCallback(async () => {
     if (!currentPage || speaking) return;
@@ -76,13 +105,18 @@ export default function StoryActivity({ language, langProgress, onExit }: StoryA
     }
   }, [currentPage, speaking, speak, language]);
 
-  const handleWordClick = (word: string, event: React.MouseEvent) => {
+  const handleWordClick = (word: string, event: MouseEvent) => {
     // Find matching vocab entry
-    const clean = word.toLowerCase().replace(/[.,!?;:""''()]/g, '');
+    const clean = word
+      .toLowerCase()
+      .replace(/[.,!?;:"'()\[\]{}]/g, '')
+      .trim();
     const match = currentPage?.vocab.find(
       (v) =>
         v.translation.toLowerCase().includes(clean) ||
-        v.romanization?.toLowerCase().includes(clean)
+        clean.includes(v.translation.toLowerCase()) ||
+        v.romanization?.toLowerCase().includes(clean) ||
+        clean.includes(v.romanization?.toLowerCase() ?? '')
     );
 
     if (match) {
@@ -191,6 +225,43 @@ export default function StoryActivity({ language, langProgress, onExit }: StoryA
               </div>
             )}
 
+            {quizTarget && quizOptions.length >= 2 && (
+              <div className="mt-6 border-t border-gray-100 pt-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Comprehension check</h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  In this passage, what does <span className="font-semibold">{quizTarget.translation}</span> mean?
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {quizOptions.map((opt) => {
+                    const isCorrect = opt === quizTarget.english;
+                    const isSelected = selectedAnswer === opt;
+                    return (
+                      <button
+                        key={opt}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedAnswer) return;
+                          setSelectedAnswer(opt);
+                          onAnswer(quizTarget.id, isCorrect, Date.now() - questionStartAt);
+                        }}
+                        className={`text-sm rounded-lg border px-3 py-2 text-left transition-colors ${
+                          !selectedAnswer
+                            ? 'bg-white border-gray-200 hover:border-sky-300 hover:bg-sky-50'
+                            : isCorrect
+                            ? 'bg-green-50 border-green-300 text-green-800'
+                            : isSelected
+                            ? 'bg-red-50 border-red-300 text-red-700'
+                            : 'bg-white border-gray-200 opacity-60'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Vocabulary in this story */}
             <div className="mt-6 border-t border-gray-100 pt-4">
               <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">
@@ -216,7 +287,7 @@ export default function StoryActivity({ language, langProgress, onExit }: StoryA
           {/* Navigation */}
           <div className="border-t border-gray-100 p-4 flex items-center justify-between">
             <button
-              onClick={(e) => { e.stopPropagation(); setPageIndex(Math.max(0, pageIndex - 1)); setShowTranslation(false); }}
+              onClick={(e) => { e.stopPropagation(); setPageIndex(Math.max(0, pageIndex - 1)); setShowTranslation(false); setSelectedAnswer(null); setQuestionStartAt(Date.now()); }}
               disabled={pageIndex === 0}
               className="flex items-center gap-1 px-4 py-2 rounded-xl font-medium text-sm disabled:opacity-40 text-gray-600 hover:bg-gray-100 transition-colors"
             >
@@ -232,7 +303,7 @@ export default function StoryActivity({ language, langProgress, onExit }: StoryA
             </div>
             {pageIndex < stories.length - 1 ? (
               <button
-                onClick={(e) => { e.stopPropagation(); setPageIndex(pageIndex + 1); setShowTranslation(false); }}
+                onClick={(e) => { e.stopPropagation(); setPageIndex(pageIndex + 1); setShowTranslation(false); setSelectedAnswer(null); setQuestionStartAt(Date.now()); }}
                 className="flex items-center gap-1 px-4 py-2 rounded-xl font-medium text-sm bg-sky-500 text-white hover:bg-sky-600 transition-colors"
               >
                 Next <ChevronRight size={16} />

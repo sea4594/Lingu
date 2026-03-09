@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Volume2, Check, X, RotateCcw } from 'lucide-react';
-import type { Language, LanguageProgress, VocabEntry, SRSCard } from '../types';
+import type { Language, LanguageProgress, VocabEntry } from '../types';
 import { getVocabById, getDistractors } from '../data/vocabIndex';
-import { getDueCards } from '../utils/spacedRepetition';
+import { getReviewQueue } from '../utils/spacedRepetition';
 import { useSpeech } from '../hooks/useSpeech';
 
 interface Props {
@@ -18,8 +18,9 @@ interface SessionResult {
 }
 
 export default function SRSReviewActivity({ language, langProgress, onAnswer, onExit }: Props) {
-  const dueCards: SRSCard[] = getDueCards(langProgress.srsCards);
-  const queue = dueCards.map((c) => c.vocabId).filter((id) => getVocabById(language.code, id));
+  const allIds = langProgress.unlockedVocab;
+  const reviewQueue = getReviewQueue(langProgress.srsCards, allIds, 8, 40);
+  const queue = reviewQueue.filter((id) => getVocabById(language.code, id));
 
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResult[]>([]);
@@ -64,7 +65,7 @@ export default function SRSReviewActivity({ language, langProgress, onAnswer, on
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">All caught up!</h2>
-          <p className="text-gray-500 mb-6">No cards due for review right now. Come back later!</p>
+          <p className="text-gray-500 mb-6">No cards due right now. Keep a streak to retain long-term memory.</p>
           <button onClick={onExit} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
             Back to Home
           </button>

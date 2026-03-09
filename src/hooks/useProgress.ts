@@ -9,24 +9,30 @@ import {
   updateStreak,
   unlockNewVocab,
   recalculateStats,
+  recordAnswerStats,
 } from '../utils/progress';
 import { updateSRSCard, boolToQuality } from '../utils/spacedRepetition';
 
 export const useProgress = () => {
   const [progress, setProgress] = useState<UserProgress>(() => loadProgress());
 
-  const updateProgress = useCallback((newProgress: UserProgress) => {
-    setProgress(newProgress);
-    saveProgress(newProgress);
+  const updateProgress = useCallback((updater: (prev: UserProgress) => UserProgress) => {
+    setProgress((prev) => {
+      const next = updater(prev);
+      saveProgress(next);
+      return next;
+    });
   }, []);
 
   const selectLanguage = useCallback(
     (langCode: string) => {
-      let updated = { ...progress, selectedLanguage: langCode };
-      updated = initializeLanguage(updated, langCode);
-      updateProgress(updated);
+      updateProgress((prev) => {
+        let updated = { ...prev, selectedLanguage: langCode };
+        updated = initializeLanguage(updated, langCode);
+        return updated;
+      });
     },
-    [progress, updateProgress]
+    [updateProgress]
   );
 
   const getLangProgress = useCallback(
@@ -45,55 +51,58 @@ export const useProgress = () => {
       timeTakenMs: number,
       xpReward = 10
     ) => {
-      const langProgress = getLanguageProgress(progress, langCode);
-      const existingCard = langProgress.srsCards[vocabId];
-      if (!existingCard) return;
+      updateProgress((prev) => {
+        const ensured = initializeLanguage(prev, langCode);
+        const langProgress = getLanguageProgress(ensured, langCode);
+        const existingCard = langProgress.srsCards[vocabId];
+        if (!existingCard) return ensured;
 
-      const quality = boolToQuality(correct, timeTakenMs);
-      const updatedCard = updateSRSCard(existingCard, quality);
+        const quality = boolToQuality(correct, timeTakenMs);
+        const updatedCard = updateSRSCard(existingCard, quality);
 
-      let updated = {
-        ...progress,
-        languages: {
-          ...progress.languages,
-          [langCode]: {
-            ...langProgress,
-            srsCards: {
-              ...langProgress.srsCards,
-              [vocabId]: updatedCard,
+        let updated = {
+          ...ensured,
+          languages: {
+            ...ensured.languages,
+            [langCode]: {
+              ...langProgress,
+              srsCards: {
+                ...langProgress.srsCards,
+                [vocabId]: updatedCard,
+              },
             },
           },
-        },
-      };
+        };
 
-      if (correct) {
-        updated = awardXP(updated, langCode, xpReward);
-      }
+        updated = recordAnswerStats(updated, langCode, correct, timeTakenMs);
+        if (correct) {
+          updated = awardXP(updated, langCode, xpReward);
+        }
 
-      updated = updateStreak(updated, langCode);
-      updated = unlockNewVocab(updated, langCode);
-      updated = recalculateStats(updated, langCode);
-
-      updateProgress(updated);
+        updated = updateStreak(updated, langCode);
+        updated = unlockNewVocab(updated, langCode);
+        updated = recalculateStats(updated, langCode);
+        return updated;
+      });
     },
-    [progress, updateProgress]
+    [updateProgress]
   );
 
   const resetLanguage = useCallback(
     (langCode: string) => {
-      const updated = {
-        ...progress,
-        languages: {
-          ...progress.languages,
-          [langCode]: undefined as unknown as LanguageProgress,
-        },
-      };
-      // Remove the key
-      delete updated.languages[langCode];
-      const reinitialized = initializeLanguage(updated, langCode);
-      updateProgress(reinitialized);
+      updateProgress((prev) => {
+        const updated = {
+          ...prev,
+          languages: {
+            ...prev.languages,
+            [langCode]: undefined as unknown as LanguageProgress,
+          },
+        };
+        delete updated.languages[langCode];
+        return initializeLanguage(updated, langCode);
+      });
     },
-    [progress, updateProgress]
+    [updateProgress]
   );
 
   return {

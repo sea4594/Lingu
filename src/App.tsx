@@ -15,8 +15,11 @@ function App() {
   const { progress, selectLanguage, getLangProgress, recordAnswer, selectedLanguage } = useProgress();
   const [currentActivity, setCurrentActivity] = useState<ActivityType | null>(null);
 
-  const language = LANGUAGES.find((l) => l.code === selectedLanguage) ?? LANGUAGES[0];
-  const langProgress = getLangProgress(selectedLanguage);
+  const safeLanguageCode = LANGUAGES.some((l) => l.code === selectedLanguage)
+    ? selectedLanguage
+    : LANGUAGES[0].code;
+  const language = LANGUAGES.find((l) => l.code === safeLanguageCode) ?? LANGUAGES[0];
+  const langProgress = getLangProgress(safeLanguageCode);
 
   const handleStartActivity = (activity: ActivityType) => {
     setCurrentActivity(activity);
@@ -27,7 +30,7 @@ function App() {
   };
 
   const handleAnswerRecorded = (vocabId: string, correct: boolean, timeTaken: number) => {
-    recordAnswer(selectedLanguage, vocabId, correct, timeTaken);
+    recordAnswer(safeLanguageCode, vocabId, correct, timeTaken);
   };
 
   if (currentActivity === 'vocabulary') {
@@ -46,6 +49,7 @@ function App() {
       <SentenceBuilderActivity
         language={language}
         langProgress={langProgress}
+        onAnswer={handleAnswerRecorded}
         onExit={handleExitActivity}
       />
     );
@@ -67,6 +71,7 @@ function App() {
       <StoryActivity
         language={language}
         langProgress={langProgress}
+        onAnswer={handleAnswerRecorded}
         onExit={handleExitActivity}
       />
     );
@@ -93,7 +98,7 @@ function App() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <LanguageSelector
           languages={LANGUAGES}
-          selectedLanguage={selectedLanguage}
+          selectedLanguage={safeLanguageCode}
           onSelectLanguage={selectLanguage}
         />
         <Dashboard

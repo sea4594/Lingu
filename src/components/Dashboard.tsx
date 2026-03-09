@@ -99,6 +99,21 @@ export default function Dashboard({ langProgress, onStartActivity }: Omit<Dashbo
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard
+          icon={<TrendingUp size={20} className="text-emerald-500" />}
+          label="Accuracy"
+          value={`${langProgress.totalAnswers > 0 ? Math.round((langProgress.correctAnswers / langProgress.totalAnswers) * 100) : 0}%`}
+          color="bg-emerald-50 border-emerald-200"
+        />
+        <StatCard
+          icon={<Clock size={20} className="text-fuchsia-500" />}
+          label="Avg Response"
+          value={`${langProgress.averageResponseMs > 0 ? `${(langProgress.averageResponseMs / 1000).toFixed(1)}s` : '0.0s'}`}
+          color="bg-fuchsia-50 border-fuchsia-200"
+        />
+      </div>
+
       {/* Activity Cards */}
       <div>
         <h2 className="text-lg font-bold text-gray-700 mb-3">
@@ -129,7 +144,7 @@ function StatCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: number;
+  value: number | string;
   color: string;
 }) {
   return (

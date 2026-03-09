@@ -127,6 +127,12 @@ export const getReviewQueue = (
     .slice(0, maxReview)
     .map((c) => c.vocabId);
 
+  const upcomingCards = Object.values(cards)
+    .filter((c) => c.nextReview > now)
+    .sort((a, b) => a.nextReview - b.nextReview)
+    .slice(0, Math.max(0, maxReview - dueCards.length))
+    .map((c) => c.vocabId);
+
   const newIds = getNewCards(cards, allVocabIds, maxNew);
-  return [...dueCards, ...newIds];
+  return [...dueCards, ...upcomingCards, ...newIds];
 };

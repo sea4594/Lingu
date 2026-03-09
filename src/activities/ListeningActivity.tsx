@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Volume2 } from 'lucide-react';
 import type { Language, LanguageProgress, VocabEntry } from '../types';
 import { getVocabById, getDistractors } from '../data/vocabIndex';
@@ -20,23 +20,35 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
     .filter((v): v is VocabEntry => v !== undefined);
 
   const [index, setIndex] = useState(0);
+  const [done, setDone] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [speed, setSpeed] = useState<Speed>('normal');
   const [xpTotal, setXpTotal] = useState(0);
   const [feedback, setFeedback] = useState<null | { correct: boolean }>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [promptTarget, setPromptTarget] = useState<'word' | 'sentence'>('word');
 
   const startTimeRef = useRef(Date.now());
   const { speak, isSpeechSupported } = useSpeech();
 
-  const current = vocab[index];
+  const sessionVocab = useMemo(() => {
+    const shuffled = [...vocab].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(shuffled.length, 24));
+  }, [vocab]);
+
+  const current = sessionVocab[index];
+  const sessionLength = sessionVocab.length;
 
   const playAudio = async (entry: VocabEntry, rate: number) => {
     if (!isSpeechSupported) return;
     setIsPlaying(true);
     try {
-      await speak(entry.translation, { lang: language.speechCode ?? language.code, rate });
+      const text =
+        promptTarget === 'sentence' && entry.exampleSentence
+          ? entry.exampleSentence
+          : entry.translation;
+      await speak(text, { lang: language.speechCode ?? language.code, rate });
     } finally {
       setIsPlaying(false);
     }
@@ -44,13 +56,17 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
 
   useEffect(() => {
     if (!current) return;
+    const useSentencePrompt = Boolean(current.exampleSentence) && Math.random() > 0.55;
+    setPromptTarget(useSentencePrompt ? 'sentence' : 'word');
     const distractors = getDistractors(language.code, current.id, 3, 'english');
     setOptions([current.english, ...distractors].sort(() => Math.random() - 0.5));
     setSelected(null);
     setFeedback(null);
     startTimeRef.current = Date.now();
-    // Auto-play
-    playAudio(current, SPEED_RATE[speed]);
+    setIsPlaying(true);
+    const text = useSentencePrompt ? current.exampleSentence ?? current.translation : current.translation;
+    void speak(text, { lang: language.speechCode ?? language.code, rate: SPEED_RATE[speed] })
+      .finally(() => setIsPlaying(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
@@ -60,6 +76,31 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
         <div className="text-center">
           <p className="text-gray-600 mb-4">No vocabulary available yet.</p>
           <button onClick={onExit} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold">Go Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
+          <div className="text-5xl mb-4">🎧</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">Listening Complete</h2>
+          <p className="text-gray-500 mb-6">You finished this listening set.</p>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-blue-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-blue-600">{sessionLength}</p>
+              <p className="text-xs text-gray-500">Questions</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-amber-600">+{xpTotal}</p>
+              <p className="text-xs text-gray-500">XP</p>
+            </div>
+          </div>
+          <button onClick={onExit} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
+            Back to Home
+          </button>
         </div>
       </div>
     );
@@ -78,7 +119,11 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
     onAnswer(current.id, correct, timeTaken());
     setTimeout(() => {
       setFeedback(null);
-      setIndex((i) => (i + 1) % vocab.length);
+      if (index + 1 >= sessionLength) {
+        setDone(true);
+      } else {
+        setIndex((i) => i + 1);
+      }
     }, 1300);
   };
 
@@ -96,7 +141,7 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
         <button onClick={onExit} className="flex items-center gap-1 text-gray-600 hover:text-blue-600 transition-colors">
           <ArrowLeft size={20} /> <span className="text-sm font-medium">Exit</span>
         </button>
-        <div className="text-sm font-semibold text-gray-700">{index + 1} / {vocab.length}</div>
+        <div className="text-sm font-semibold text-gray-700">{index + 1} / {sessionLength}</div>
         <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">+{xpTotal} XP</span>
       </div>
 
@@ -104,7 +149,7 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
       <div className="h-1.5 bg-gray-200">
         <div
           className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-          style={{ width: `${((index + 1) / vocab.length) * 100}%` }}
+          style={{ width: `${((index + 1) / sessionLength) * 100}%` }}
         />
       </div>
 
@@ -120,7 +165,10 @@ export default function ListeningActivity({ language, langProgress, onAnswer, on
       <div className="px-4 py-6 space-y-6">
         {/* Audio player card */}
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <p className="text-xs text-gray-400 uppercase tracking-widest mb-6">What do you hear?</p>
+          <p className="text-xs text-gray-400 uppercase tracking-widest mb-3">What do you hear?</p>
+          {promptTarget === 'sentence' && (
+            <p className="text-xs text-blue-600 mb-3">Sentence mode: pick the best meaning</p>
+          )}
 
           <button
             onClick={() => playAudio(current, SPEED_RATE[speed])}

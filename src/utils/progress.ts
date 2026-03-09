@@ -3,6 +3,8 @@ import { getVocabForLanguage } from '../data/vocabIndex';
 import { createNewSRSCard } from './spacedRepetition';
 
 const STORAGE_KEY = 'lingu_progress';
+const BACKUP_KEYS = ['lingu_progress_backup_a', 'lingu_progress_backup_b'] as const;
+const SCHEMA_VERSION = 2;
 
 export const DEFAULT_LANGUAGE_PROGRESS = (languageCode: string): LanguageProgress => ({
   languageCode,
@@ -16,29 +18,142 @@ export const DEFAULT_LANGUAGE_PROGRESS = (languageCode: string): LanguageProgres
   wordsLearned: 0,
   wordsInReview: 0,
   wordsMastered: 0,
+  totalAnswers: 0,
+  correctAnswers: 0,
+  averageResponseMs: 0,
+  bestStreak: 0,
 });
 
+const buildDefaultProgress = (): UserProgress => ({
+  languages: {},
+  selectedLanguage: 'es',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  schemaVersion: SCHEMA_VERSION,
+});
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const coerceLanguageProgress = (langCode: string, raw: unknown): LanguageProgress => {
+  const defaults = DEFAULT_LANGUAGE_PROGRESS(langCode);
+  if (!isObject(raw)) return defaults;
+
+  const unlocked = Array.isArray(raw.unlockedVocab)
+    ? raw.unlockedVocab.filter((id): id is string => typeof id === 'string')
+    : defaults.unlockedVocab;
+
+  const srsCards = isObject(raw.srsCards)
+    ? (raw.srsCards as LanguageProgress['srsCards'])
+    : defaults.srsCards;
+
+  return {
+    ...defaults,
+    ...raw,
+    languageCode: langCode,
+    unlockedVocab: unlocked,
+    srsCards,
+    totalAnswers: typeof raw.totalAnswers === 'number' ? raw.totalAnswers : defaults.totalAnswers,
+    correctAnswers: typeof raw.correctAnswers === 'number' ? raw.correctAnswers : defaults.correctAnswers,
+    averageResponseMs:
+      typeof raw.averageResponseMs === 'number' ? raw.averageResponseMs : defaults.averageResponseMs,
+    bestStreak: typeof raw.bestStreak === 'number' ? raw.bestStreak : defaults.bestStreak,
+  };
+};
+
+const coerceProgress = (raw: unknown): UserProgress | null => {
+  if (!isObject(raw) || !isObject(raw.languages)) return null;
+
+  const languages: UserProgress['languages'] = {};
+  for (const [langCode, value] of Object.entries(raw.languages)) {
+    languages[langCode] = coerceLanguageProgress(langCode, value);
+  }
+
+  return {
+    languages,
+    selectedLanguage: typeof raw.selectedLanguage === 'string' ? raw.selectedLanguage : 'es',
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+    schemaVersion: typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 1,
+  };
+};
+
+const migrateProgress = (progress: UserProgress): UserProgress => {
+  let migrated: UserProgress = {
+    ...progress,
+    schemaVersion: SCHEMA_VERSION,
+  };
+
+  for (const langCode of Object.keys(migrated.languages)) {
+    migrated = initializeLanguage(migrated, langCode);
+    const langProgress = getLanguageProgress(migrated, langCode);
+    const cardMap = { ...langProgress.srsCards };
+    let changed = false;
+
+    for (const vocabId of langProgress.unlockedVocab) {
+      if (!cardMap[vocabId]) {
+        cardMap[vocabId] = createNewSRSCard(vocabId);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      migrated = {
+        ...migrated,
+        languages: {
+          ...migrated.languages,
+          [langCode]: {
+            ...langProgress,
+            srsCards: cardMap,
+          },
+        },
+      };
+    }
+
+    migrated = recalculateStats(migrated, langCode);
+  }
+
+  return migrated;
+};
+
 export const loadProgress = (): UserProgress => {
+  const candidates = [STORAGE_KEY, ...BACKUP_KEYS];
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored) as UserProgress;
+    for (const key of candidates) {
+      const stored = localStorage.getItem(key);
+      if (!stored) continue;
+
+      const parsed = coerceProgress(JSON.parse(stored));
+      if (!parsed) continue;
+
+      const migrated = migrateProgress(parsed);
+      saveProgress(migrated);
+      return migrated;
     }
   } catch {
     // ignore parse errors
   }
-  return {
-    languages: {},
-    selectedLanguage: 'es',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+
+  return buildDefaultProgress();
 };
 
 export const saveProgress = (progress: UserProgress): void => {
   try {
-    progress.updatedAt = new Date().toISOString();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    const snapshot: UserProgress = {
+      ...progress,
+      updatedAt: new Date().toISOString(),
+      schemaVersion: SCHEMA_VERSION,
+    };
+    const serialized = JSON.stringify(snapshot);
+
+    const existing = localStorage.getItem(STORAGE_KEY);
+    if (existing) {
+      const index = Date.now() % BACKUP_KEYS.length;
+      localStorage.setItem(BACKUP_KEYS[index], existing);
+    }
+
+    localStorage.setItem(STORAGE_KEY, serialized);
   } catch {
     // ignore storage errors (e.g., private browsing)
   }
@@ -159,8 +274,8 @@ export const updateStreak = (
       [langCode]: {
         ...langProgress,
         streak,
+        bestStreak: Math.max(langProgress.bestStreak, streak),
         lastStudiedDate: today,
-        completedActivities: langProgress.completedActivities + 1,
       },
     },
   };
@@ -189,9 +304,16 @@ export const unlockNewVocab = (
     (c) => c.stage === 'mastered'
   ).length;
 
+  const recentAccuracy =
+    langProgress.totalAnswers > 0
+      ? langProgress.correctAnswers / langProgress.totalAnswers
+      : 0.5;
+
+  const unlockPace = recentAccuracy >= 0.85 ? 8 : recentAccuracy >= 0.7 ? 6 : 4;
+
   // Unlock new words based on mastered count
   const unlockThreshold = Math.floor(masteredCount / 5) + 1; // Unlock 1 batch per 5 mastered
-  const maxDifficulty = Math.min(5, Math.ceil(unlockThreshold / 2));
+  const maxDifficulty = Math.min(5, Math.ceil(unlockThreshold / 2) + (recentAccuracy >= 0.9 ? 1 : 0));
 
   const eligibleVocab = vocab.filter(
     (v) => !currentUnlocked.has(v.id) && v.difficulty <= maxDifficulty
@@ -199,7 +321,7 @@ export const unlockNewVocab = (
 
   if (eligibleVocab.length === 0) return progress;
 
-  const newVocab = eligibleVocab.slice(0, 5); // Unlock 5 at a time
+  const newVocab = eligibleVocab.slice(0, unlockPace);
   const newSrsCards = { ...langProgress.srsCards };
   newVocab.forEach((v) => {
     if (!newSrsCards[v.id]) {
@@ -243,6 +365,33 @@ export const recalculateStats = (
         wordsLearned,
         wordsInReview,
         wordsMastered,
+      },
+    },
+  };
+};
+
+export const recordAnswerStats = (
+  progress: UserProgress,
+  langCode: string,
+  correct: boolean,
+  timeTakenMs: number
+): UserProgress => {
+  const langProgress = getLanguageProgress(progress, langCode);
+  const totalAnswers = langProgress.totalAnswers + 1;
+  const correctAnswers = langProgress.correctAnswers + (correct ? 1 : 0);
+  const cumulativeMs = langProgress.averageResponseMs * langProgress.totalAnswers + Math.max(0, timeTakenMs);
+  const averageResponseMs = Math.round(cumulativeMs / totalAnswers);
+
+  return {
+    ...progress,
+    languages: {
+      ...progress.languages,
+      [langCode]: {
+        ...langProgress,
+        totalAnswers,
+        correctAnswers,
+        averageResponseMs,
+        completedActivities: langProgress.completedActivities + 1,
       },
     },
   };

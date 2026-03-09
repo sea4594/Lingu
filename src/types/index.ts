@@ -86,6 +86,10 @@ export interface LanguageProgress {
   wordsLearned: number;
   wordsInReview: number;
   wordsMastered: number;
+  totalAnswers: number;
+  correctAnswers: number;
+  averageResponseMs: number;
+  bestStreak: number;
 }
 
 export interface UserProgress {
@@ -93,6 +97,7 @@ export interface UserProgress {
   selectedLanguage: string;
   createdAt: string;
   updatedAt: string;
+  schemaVersion?: number;
 }
 
 // Quiz state types

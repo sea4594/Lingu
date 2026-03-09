@@ -38,13 +38,6 @@ export const LANGUAGES: Language[] = [
     speechCode: 'ar-SA',
   },
   {
-    code: 'bn',
-    name: 'Bengali',
-    nativeName: 'বাংলা',
-    flag: '🇧🇩',
-    speechCode: 'bn-BD',
-  },
-  {
     code: 'pt',
     name: 'Portuguese',
     nativeName: 'Português',
@@ -64,13 +57,6 @@ export const LANGUAGES: Language[] = [
     nativeName: '日本語',
     flag: '🇯🇵',
     speechCode: 'ja-JP',
-  },
-  {
-    code: 'pa',
-    name: 'Punjabi',
-    nativeName: 'ਪੰਜਾਬੀ',
-    flag: '🇮🇳',
-    speechCode: 'pa-IN',
   },
   {
     code: 'de',
@@ -94,13 +80,6 @@ export const LANGUAGES: Language[] = [
     speechCode: 'fr-FR',
   },
   {
-    code: 'tr',
-    name: 'Turkish',
-    nativeName: 'Türkçe',
-    flag: '🇹🇷',
-    speechCode: 'tr-TR',
-  },
-  {
     code: 'vi',
     name: 'Vietnamese',
     nativeName: 'Tiếng Việt',
@@ -115,33 +94,11 @@ export const LANGUAGES: Language[] = [
     speechCode: 'it-IT',
   },
   {
-    code: 'ta',
-    name: 'Tamil',
-    nativeName: 'தமிழ்',
-    flag: '🇮🇳',
-    speechCode: 'ta-IN',
-  },
-  {
-    code: 'ur',
-    name: 'Urdu',
-    nativeName: 'اردو',
-    flag: '🇵🇰',
-    rtl: true,
-    speechCode: 'ur-PK',
-  },
-  {
     code: 'th',
     name: 'Thai',
     nativeName: 'ภาษาไทย',
     flag: '🇹🇭',
     speechCode: 'th-TH',
-  },
-  {
-    code: 'pl',
-    name: 'Polish',
-    nativeName: 'Polski',
-    flag: '🇵🇱',
-    speechCode: 'pl-PL',
   },
 ];
 
