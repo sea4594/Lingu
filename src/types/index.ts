@@ -181,6 +181,8 @@ export interface FlashcardSettings {
   showJapaneseOnBack: boolean;
   showRomajiOnBack: boolean;
   showContextOnBack: boolean;
+  ttsRate: number;
+  ttsStyle: number;
 }
 
 export interface PlacementQuestion {

@@ -158,6 +158,23 @@ nav button {
 .placement-actions {
   display: flex;
   gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.tts-button {
+  border: 1px solid #d5dfec;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #234d79;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  margin-top: 0.55rem;
+  cursor: pointer;
+}
+
+.tts-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .flashcard-meta {
@@ -355,6 +372,35 @@ nav button {
   background: white;
   padding: 0.45rem;
   min-width: 240px;
+}
+
+.settings-panel input[type='range'] {
+  display: block;
+  width: min(360px, 100%);
+  margin-top: 0.45rem;
+}
+
+.speech-feedback {
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.65rem;
+  text-align: left;
+}
+
+.speech-feedback p {
+  margin: 0.2rem 0;
+}
+
+.speech-feedback.is-correct {
+  border-color: #8dd3b4;
+  background: #eefdF4;
+}
+
+.speech-feedback.is-wrong {
+  border-color: #f0b7aa;
+  background: #fff4f0;
 }
 
 .settings-summary {

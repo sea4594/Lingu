@@ -30,3 +30,17 @@ npm run build
 
 - React 19 + TypeScript + Vite
 - localStorage for offline progress persistence
+
+## Optional: Japanese AI Text-to-Speech
+
+The app includes Japanese text-to-speech for flashcards, placement cards, and vocab rows.
+
+- Default: browser Japanese voice (`ja-JP`) fallback
+- Premium option: ElevenLabs Japanese AI voice
+
+Set these in your environment to enable the premium voice:
+
+```bash
+VITE_ELEVENLABS_API_KEY=your_api_key
+VITE_ELEVENLABS_JA_VOICE_ID=your_japanese_voice_id
+```

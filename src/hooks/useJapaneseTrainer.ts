@@ -21,42 +21,71 @@ const DEFAULT_SETTINGS: FlashcardSettings = {
   showJapaneseOnBack: true,
   showRomajiOnBack: true,
   showContextOnBack: true,
+  ttsRate: 1,
+  ttsStyle: 0.2,
 };
 
 const DEFAULT_STATE: JapaneseTrainerState = {
-  placementDone: false,
+  placementDone: true,
   estimatedRank: 1,
   activeGroupIds: [],
   activeWordIds: [],
   selectedLanguage: 'japanese',
-  groupCursor: 0,
+  groupCursor: 4,
   settings: DEFAULT_SETTINGS,
   statsByWordId: {},
   updatedAt: new Date().toISOString(),
 };
 
+function createBeginnerState(): JapaneseTrainerState {
+  const now = Date.now();
+  const starterGroups = JAPANESE_VOCAB_GROUPS.slice(0, 4);
+  const starterWordIds = starterGroups.flatMap((group) => group.wordIds);
+  const statsByWordId: Record<string, WordLearningStats> = {};
+
+  starterWordIds.forEach((wordId) => {
+    statsByWordId[wordId] = toWordStats(wordId, now);
+  });
+
+  return {
+    ...DEFAULT_STATE,
+    placementDone: true,
+    estimatedRank: 1,
+    activeGroupIds: starterGroups.map((group) => group.id),
+    activeWordIds: starterWordIds,
+    groupCursor: 4,
+    statsByWordId,
+    updatedAt: new Date(now).toISOString(),
+  };
+}
+
 function loadState(): JapaneseTrainerState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return DEFAULT_STATE;
+      return createBeginnerState();
     }
 
     const parsed = JSON.parse(raw) as JapaneseTrainerState;
+    const hasActiveWords = (parsed.activeWordIds ?? []).length > 0;
+    const shouldMigrateToBeginner = parsed.placementDone === false && !hasActiveWords;
+    const base = shouldMigrateToBeginner ? createBeginnerState() : DEFAULT_STATE;
+
     return {
-      ...DEFAULT_STATE,
+      ...base,
       ...parsed,
       settings: {
         ...DEFAULT_SETTINGS,
         ...(parsed.settings ?? {}),
       },
-      statsByWordId: parsed.statsByWordId ?? {},
-      activeGroupIds: parsed.activeGroupIds ?? [],
-      activeWordIds: parsed.activeWordIds ?? [],
+      statsByWordId: parsed.statsByWordId ?? base.statsByWordId,
+      activeGroupIds: parsed.activeGroupIds ?? base.activeGroupIds,
+      activeWordIds: parsed.activeWordIds ?? base.activeWordIds,
       selectedLanguage: 'japanese',
+      placementDone: shouldMigrateToBeginner ? true : (parsed.placementDone ?? true),
     };
   } catch {
-    return DEFAULT_STATE;
+    return createBeginnerState();
   }
 }
 
