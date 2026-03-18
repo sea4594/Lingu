@@ -1,12 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
-import { JAPANESE_VOCAB_BY_ID, JAPANESE_VOCAB_SIZE } from './data/japaneseVocabulary';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type TouchEvent,
+} from 'react';
+import { Settings, X } from 'lucide-react';
+import {
+  JAPANESE_VOCAB_BY_ID,
+  JAPANESE_VOCAB_GROUPS,
+  JAPANESE_VOCAB_SIZE,
+} from './data/japaneseVocabulary';
 import { useJapaneseTrainer } from './hooks/useJapaneseTrainer';
 import { useJapaneseTTS } from './hooks/useJapaneseTTS';
 import { useSpeech } from './hooks/useSpeech';
 import { levenshtein, stripAccents } from './utils/fuzzyMatch';
 
-type AppView = 'flashcards' | 'vocab-list' | 'settings';
+type AppView = 'flashcards' | 'my-vocab' | 'entire-cache' | 'settings';
+type ListView = 'my-vocab' | 'entire-cache';
 type FlashcardMode = 'flip' | 'speak-japanese';
+type StudyMode = 'all' | 'group';
 
 type SpeechResult = {
   transcript: string;
@@ -29,6 +45,15 @@ const similarity = (left: string, right: string): number => {
   if (!a || !b) return 0;
   const distance = levenshtein(a, b);
   return 1 - distance / Math.max(a.length, b.length);
+};
+
+const shuffleIds = (ids: string[]): string[] => {
+  const shuffled = [...ids];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 };
 
 function App() {
@@ -55,11 +80,17 @@ function App() {
   const { speak, isSpeaking, providerLabel, hasPremiumVoice } = useJapaneseTTS();
   const { recognize, stopRecognition, isRecognitionSupported } = useSpeech();
 
-  const [view, setView] = useState<AppView>('flashcards');
+  const [view, setView] = useState<AppView>('my-vocab');
+  const [lastListView, setLastListView] = useState<ListView>('my-vocab');
+  const [studyMode, setStudyMode] = useState<StudyMode>('all');
+  const [studyGroupId, setStudyGroupId] = useState<string | null>(null);
+  const [groupSessionWordIds, setGroupSessionWordIds] = useState<string[]>([]);
+  const [groupRoundRemainingIds, setGroupRoundRemainingIds] = useState<string[]>([]);
+  const [expandedCacheGroupId, setExpandedCacheGroupId] = useState<string | null>(null);
+
   const [isTakingPlacementQuiz, setIsTakingPlacementQuiz] = useState(false);
   const [placementIndex, setPlacementIndex] = useState(0);
   const [placementAnswers, setPlacementAnswers] = useState<Record<string, boolean>>({});
-
   const [historyIds, setHistoryIds] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [flashcardMode, setFlashcardMode] = useState<FlashcardMode>('flip');
@@ -74,7 +105,24 @@ function App() {
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
   const [checkedWordIds, setCheckedWordIds] = useState<Record<string, boolean>>({});
 
-  const fallbackCard = activeEntries[0] ?? null;
+  const groupStudyLabel = useMemo(() => {
+    if (!studyGroupId) {
+      return null;
+    }
+    return activeGroups.find((group) => group.id === studyGroupId)?.name ?? null;
+  }, [activeGroups, studyGroupId]);
+
+  const studyPoolEntries = useMemo(() => {
+    if (studyMode !== 'group') {
+      return activeEntries;
+    }
+
+    return groupSessionWordIds
+      .map((wordId) => JAPANESE_VOCAB_BY_ID[wordId])
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  }, [activeEntries, groupSessionWordIds, studyMode]);
+
+  const fallbackCard = studyPoolEntries[0] ?? null;
 
   const currentCard = useMemo(() => {
     if (historyIds.length === 0) {
@@ -90,6 +138,49 @@ function App() {
       style: state.settings.ttsStyle,
     });
   };
+
+  const beginFlashcards = useCallback((nextMode: StudyMode, wordIds: string[], groupId: string | null = null) => {
+    if (wordIds.length === 0) {
+      return;
+    }
+
+    setStudyMode(nextMode);
+    setStudyGroupId(groupId);
+
+    if (nextMode === 'group') {
+      const shuffled = shuffleIds(wordIds);
+      const firstId = shuffled[0];
+      setGroupSessionWordIds(wordIds);
+      setGroupRoundRemainingIds(shuffled.slice(1));
+      setHistoryIds(firstId ? [firstId] : []);
+    } else {
+      setGroupSessionWordIds([]);
+      setGroupRoundRemainingIds([]);
+      const first = pickNextCard() ?? activeEntries[0] ?? null;
+      setHistoryIds(first ? [first.id] : []);
+    }
+
+    setHistoryIndex(0);
+    setFlipped(false);
+    setSpeechResult(null);
+    setIsMicArmed(true);
+    autoListenedCardIdRef.current = null;
+    setView('flashcards');
+  }, [activeEntries, pickNextCard]);
+
+  const startStudyAll = useCallback(() => {
+    beginFlashcards('all', activeEntries.map((entry) => entry.id));
+  }, [activeEntries, beginFlashcards]);
+
+  const startStudyGroup = useCallback((groupId: string) => {
+    const group = activeGroups.find((item) => item.id === groupId);
+    if (!group) {
+      return;
+    }
+
+    const groupWordIds = group.wordIds.filter((wordId) => state.activeWordIds.includes(wordId));
+    beginFlashcards('group', groupWordIds, groupId);
+  }, [activeGroups, beginFlashcards, state.activeWordIds]);
 
   const startSpeechCheck = useCallback(async () => {
     if (!currentCard || !isRecognitionSupported || isRecognizing) {
@@ -117,7 +208,6 @@ function App() {
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : '';
       const noSpeech = message.includes('timed out') || message.includes('no-speech') || message.includes('aborted');
-
       setSpeechResult({
         transcript: noSpeech ? 'No speech detected after 10 seconds. Listening stopped.' : 'Could not capture speech. Please try again.',
         correct: false,
@@ -221,8 +311,26 @@ function App() {
       return;
     }
 
-    const recent = new Set(historyIds.slice(Math.max(0, historyIds.length - 4)));
-    const nextCard = pickNextCard(recent) ?? pickNextCard();
+    let nextCard = null;
+
+    if (studyMode === 'group') {
+      if (groupSessionWordIds.length === 0) {
+        return;
+      }
+
+      const pool = groupRoundRemainingIds.length > 0
+        ? groupRoundRemainingIds
+        : shuffleIds(groupSessionWordIds);
+      const [nextId, ...rest] = pool;
+      setGroupRoundRemainingIds(rest);
+      if (nextId) {
+        nextCard = JAPANESE_VOCAB_BY_ID[nextId] ?? null;
+      }
+    } else {
+      const recent = new Set(historyIds.slice(Math.max(0, historyIds.length - 4)));
+      nextCard = pickNextCard(recent) ?? pickNextCard();
+    }
+
     if (!nextCard) {
       return;
     }
@@ -232,6 +340,38 @@ function App() {
     setFlipped(false);
     setSpeechResult(null);
     autoListenedCardIdRef.current = null;
+  };
+
+  const removeCurrentCardFromGroupSession = () => {
+    if (studyMode !== 'group' || !currentCard) {
+      return;
+    }
+
+    const removeId = currentCard.id;
+    const remainingWordIds = groupSessionWordIds.filter((wordId) => wordId !== removeId);
+    const nextRound = groupRoundRemainingIds.filter((wordId) => wordId !== removeId);
+    const nextHistory = historyIds.filter((wordId) => wordId !== removeId);
+
+    setGroupSessionWordIds(remainingWordIds);
+    setGroupRoundRemainingIds(nextRound);
+
+    if (remainingWordIds.length === 0) {
+      setHistoryIds([]);
+      setHistoryIndex(0);
+      return;
+    }
+
+    if (nextHistory.length > 0) {
+      setHistoryIds(nextHistory);
+      setHistoryIndex((prev) => Math.min(prev, nextHistory.length - 1));
+      return;
+    }
+
+    const refill = nextRound.length > 0 ? nextRound : shuffleIds(remainingWordIds);
+    const [nextId, ...rest] = refill;
+    setGroupRoundRemainingIds(rest);
+    setHistoryIds(nextId ? [nextId] : []);
+    setHistoryIndex(0);
   };
 
   const handleSwipeStart = (clientX: number) => {
@@ -310,7 +450,6 @@ function App() {
   if (isTakingPlacementQuiz) {
     const question = placementQuestions[placementIndex];
     const progressPercent = Math.round(((placementIndex + 1) / placementQuestions.length) * 100);
-
     return (
       <div className="app-shell">
         <main className="panel placement-panel">
@@ -322,7 +461,6 @@ function App() {
             <div className="progress-value" style={{ width: `${progressPercent}%` }} />
           </div>
           <div className="placement-count">Question {placementIndex + 1} / {placementQuestions.length}</div>
-
           {question ? (
             <section className="placement-card">
               <h2>{question.prompt}</h2>
@@ -363,23 +501,66 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <h1>Lingu: Japanese Vocabulary</h1>
-          <p>
-            {JAPANESE_VOCAB_SIZE.toLocaleString()} cached words and phrases • Active: {state.activeWordIds.length} • Accuracy: {totalAccuracy}%
-          </p>
+      {view !== 'settings' && (
+        <header className="topbar app-header">
+          <h1>Lingu</h1>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setView('settings')}
+            aria-label="Open settings"
+          >
+            <Settings size={20} />
+          </button>
+        </header>
+      )}
+
+      {(view === 'my-vocab' || view === 'entire-cache') && (
+        <div className="page-tabs">
+          <button
+            type="button"
+            className={view === 'my-vocab' ? 'tab-button nav-active' : 'tab-button button-soft'}
+            onClick={() => {
+              setView('my-vocab');
+              setLastListView('my-vocab');
+            }}
+          >
+            My Vocab
+          </button>
+          <button
+            type="button"
+            className={view === 'entire-cache' ? 'tab-button nav-active' : 'tab-button button-soft'}
+            onClick={() => {
+              setView('entire-cache');
+              setLastListView('entire-cache');
+            }}
+          >
+            Entire Cache
+          </button>
         </div>
-        <nav>
-          <button type="button" className={view === 'flashcards' ? 'nav-active' : ''} onClick={() => setView('flashcards')}>Flashcards</button>
-          <button type="button" className={view === 'vocab-list' ? 'nav-active' : ''} onClick={() => setView('vocab-list')}>Vocab List</button>
-          <button type="button" className={view === 'settings' ? 'nav-active' : ''} onClick={() => setView('settings')}>Settings</button>
-        </nav>
-      </header>
+      )}
 
       <main className="panel">
         {view === 'flashcards' && (
           <section>
+            <div className="flashcard-top-actions">
+              <button
+                type="button"
+                className="button button-soft"
+                onClick={() => {
+                  setView('my-vocab');
+                  setLastListView('my-vocab');
+                }}
+              >
+                Back to My Vocab
+              </button>
+              <p className="muted">
+                {studyMode === 'group'
+                  ? `Studying group: ${groupStudyLabel ?? 'Custom Group Session'}`
+                  : 'Studying all active vocabulary'}
+              </p>
+            </div>
+
             <div className="flashcard-controls">
               <button
                 type="button"
@@ -535,7 +716,6 @@ function App() {
                       </div>
 
                       <p className="muted">Swipe left or right to move between cards.</p>
-
                       {!isRecognitionSupported && (
                         <p className="muted">Speech recognition is not available in this browser.</p>
                       )}
@@ -598,22 +778,47 @@ function App() {
                     </button>
                   </div>
                 )}
+
+                {studyMode === 'group' && (
+                  <div className="score-controls">
+                    <button
+                      type="button"
+                      className="button button-soft"
+                      onClick={removeCurrentCardFromGroupSession}
+                    >
+                      Remove card
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <section className="empty-state">
-                <h2>No active flashcards yet</h2>
-                <p>Add your first bite-size group to start.</p>
-                <button type="button" className="button" onClick={() => addNextGroup()}>Add first group</button>
+                <h2>No flashcards in this session</h2>
+                {studyMode === 'group'
+                  ? <p>All cards were removed for this group session. Return to My Vocab to start again.</p>
+                  : <p>Add your first group and then press Study all.</p>}
               </section>
             )}
           </section>
         )}
 
-        {view === 'vocab-list' && (
+        {view === 'my-vocab' && (
           <section>
-            <div className="list-header">
-              <h2>Introduced Vocabulary</h2>
-              <p>Each score decays over time and drops after misses.</p>
+            <div className="list-header list-header-with-action">
+              <div>
+                <h2>My Vocab</h2>
+                <p>
+                  {JAPANESE_VOCAB_SIZE.toLocaleString()} cached words and phrases • Active: {state.activeWordIds.length} • Accuracy: {totalAccuracy}%
+                </p>
+              </div>
+              <button
+                type="button"
+                className="button"
+                onClick={startStudyAll}
+                disabled={activeEntries.length === 0}
+              >
+                Study all
+              </button>
             </div>
 
             <div className="group-list">
@@ -624,10 +829,31 @@ function App() {
                       <h3>{group.name}</h3>
                       <p>{words.length} active words</p>
                     </div>
-                    <button type="button" className="button button-soft" onClick={() => removeGroup(group.id)}>
-                      Remove group
+                    <button
+                      type="button"
+                      className="group-remove-x"
+                      aria-label={`Remove ${group.name}`}
+                      onClick={() => {
+                        const isConfirmed = window.confirm(`Are you sure you want to remove this group: ${group.name}?`);
+                        if (isConfirmed) {
+                          removeGroup(group.id);
+                        }
+                      }}
+                    >
+                      <X size={16} />
                     </button>
                   </header>
+
+                  <div className="group-actions">
+                    <button
+                      type="button"
+                      className="button button-soft"
+                      onClick={() => startStudyGroup(group.id)}
+                      disabled={words.length === 0}
+                    >
+                      Study Group
+                    </button>
+                  </div>
 
                   <div className="word-table">
                     {words.map((word) => (
@@ -662,7 +888,7 @@ function App() {
                 I am ready for more
               </button>
               <button type="button" className="button button-soft" onClick={() => setShowPicker((prev) => !prev)}>
-                ⋯
+                Add specific
               </button>
             </footer>
 
@@ -670,7 +896,6 @@ function App() {
               <section className="picker-panel">
                 <h3>Add specific groups or words</h3>
                 <p>Choose upcoming groups, or open a group and choose specific words.</p>
-
                 <div className="picker-groups">
                   {upcomingGroups.slice(0, 12).map((group) => (
                     <article key={group.id} className="picker-group-card">
@@ -729,9 +954,65 @@ function App() {
           </section>
         )}
 
+        {view === 'entire-cache' && (
+          <section>
+            <div className="list-header">
+              <h2>Entire Cache</h2>
+              <p>Tap a group to show all words. Opening one group closes any other open group.</p>
+            </div>
+
+            <div className="cache-group-list">
+              {JAPANESE_VOCAB_GROUPS.map((group) => {
+                const isOpen = expandedCacheGroupId === group.id;
+                return (
+                  <section key={group.id} className="cache-group-card">
+                    <button
+                      type="button"
+                      className="cache-group-toggle"
+                      onClick={() => {
+                        setExpandedCacheGroupId((prev) => (prev === group.id ? null : group.id));
+                      }}
+                    >
+                      <span>{group.name}</span>
+                      <span>{group.wordIds.length} words</span>
+                    </button>
+                    {isOpen && (
+                      <div className="cache-word-list">
+                        {group.wordIds.map((wordId) => {
+                          const word = JAPANESE_VOCAB_BY_ID[wordId];
+                          if (!word) {
+                            return null;
+                          }
+
+                          return (
+                            <article key={wordId} className="cache-word-row">
+                              <strong>{word.english}</strong>
+                              <p>{word.japanese} • {word.romaji}</p>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {view === 'settings' && (
           <section className="settings-panel">
-            <h2>Flashcard Settings</h2>
+            <div className="settings-header">
+              <button
+                type="button"
+                className="icon-button settings-close"
+                onClick={() => setView(lastListView)}
+                aria-label="Close settings"
+              >
+                <X size={18} />
+              </button>
+              <h2>Settings</h2>
+            </div>
             <p>Customize what appears on the Japanese side of each card.</p>
 
             <label>
