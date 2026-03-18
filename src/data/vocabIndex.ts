@@ -1,17 +1,5 @@
 import type { VocabEntry } from '../types';
-import spanishVocab from './vocab/spanish';
-import mandarinVocab from './vocab/mandarin';
-import frenchVocab from './vocab/french';
-import germanVocab from './vocab/german';
 import japaneseVocab from './vocab/japanese';
-import portugueseVocab from './vocab/portuguese';
-import russianVocab from './vocab/russian';
-import arabicVocab from './vocab/arabic';
-import hindiVocab from './vocab/hindi';
-import koreanVocab from './vocab/korean';
-import italianVocab from './vocab/italian';
-import vietnameseVocab from './vocab/vietnamese';
-import thaiVocab from './vocab/thai';
 
 const normalize = (value: string): string =>
   value
@@ -60,19 +48,7 @@ const englishVocab: VocabEntry[] = [
 ];
 
 export const VOCAB_BY_LANGUAGE: Record<string, VocabEntry[]> = {
-  es: spanishVocab,
-  zh: mandarinVocab,
-  fr: frenchVocab,
-  de: germanVocab,
   ja: japaneseVocab,
-  pt: portugueseVocab,
-  ru: russianVocab,
-  ar: arabicVocab,
-  hi: hindiVocab,
-  ko: koreanVocab,
-  it: italianVocab,
-  vi: vietnameseVocab,
-  th: thaiVocab,
   en: englishVocab,
 };
 

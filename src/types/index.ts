@@ -143,3 +143,62 @@ export interface StoryParagraph {
   target: string;
   english: string;
 }
+
+// Japanese-focused vocabulary trainer types
+export interface JapaneseVocabEntry {
+  id: string;
+  english: string;
+  romaji: string;
+  japanese: string;
+  context: string;
+  groupId: string;
+  groupName: string;
+  rank: number;
+  topic: string;
+}
+
+export interface JapaneseVocabGroup {
+  id: string;
+  name: string;
+  topic: string;
+  levelBand: number;
+  wordIds: string[];
+}
+
+export interface WordLearningStats {
+  wordId: string;
+  repetitions: number;
+  correct: number;
+  incorrect: number;
+  lastSeenAt: number;
+  nextDueAt: number;
+  intervalDays: number;
+  comprehension: number;
+}
+
+export interface FlashcardSettings {
+  direction: 'en-to-ja' | 'ja-to-en';
+  showJapaneseOnBack: boolean;
+  showRomajiOnBack: boolean;
+  showContextOnBack: boolean;
+}
+
+export interface PlacementQuestion {
+  wordId: string;
+  prompt: string;
+  romaji: string;
+  english: string;
+  rank: number;
+}
+
+export interface JapaneseTrainerState {
+  placementDone: boolean;
+  estimatedRank: number;
+  activeGroupIds: string[];
+  activeWordIds: string[];
+  selectedLanguage: 'japanese';
+  groupCursor: number;
+  settings: FlashcardSettings;
+  statsByWordId: Record<string, WordLearningStats>;
+  updatedAt: string;
+}

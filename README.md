@@ -1,19 +1,17 @@
-# Lingu 🌍
+# Lingu: Japanese Vocabulary Trainer
 
-A comprehensive language learning web app built with React, TypeScript, and Vite.
+A focused Japanese-only vocabulary learning app built with React, TypeScript, and Vite.
 
-## Features
+## What this version does
 
-- **20 Most-Spoken Languages** — Mandarin, Spanish, English, Hindi, Arabic, Bengali, Portuguese, Russian, Japanese, Punjabi, German, Korean, French, Turkish, Vietnamese, Italian, Tamil, Urdu, Thai, Polish
-- **Spaced Repetition System (SM-2)** — Reviews words at scientifically optimal intervals for long-term retention
-- **5 Learning Activities:**
-  - 📚 **Vocabulary Practice** — Flashcards, multiple choice (both directions), type-the-translation, pronunciation (Web Speech API), and listening modes
-  - 🧠 **SRS Review** — Daily review of words due for reinforcement
-  - 🎧 **Listening Practice** — Hear and identify spoken words/phrases
-  - 🧩 **Sentence Builder** — Rearrange scrambled words to form correct sentences
-  - 📖 **Reading Stories** — Read passages with clickable word translations
-- **Progress Tracking** — Stored in localStorage; level, XP, streaks, and word mastery stats
-- **Research-Based Design** — Active recall, spaced repetition, interleaving, comprehensible input (i+1)
+- Japanese is the only language in scope.
+- Includes a cached in-repo vocabulary dataset with more than 20,000 words/phrases.
+- Runs a first-launch placement quiz to estimate starting level.
+- Flashcards support English -> Japanese and Japanese -> English directions.
+- Japanese-side card details are configurable (characters, romaji, context notes).
+- Card scheduling uses per-word progress with repetition, accuracy, and recency.
+- Vocab list groups words into bite-size clusters and tracks comprehension scores.
+- Users can add the next group, select upcoming groups/specific words, and remove words/groups.
 
 ## Setup
 
@@ -28,9 +26,7 @@ npm run dev
 npm run build
 ```
 
-## Technology
+## Stack
 
 - React 19 + TypeScript + Vite
-- Tailwind CSS
-- Web Speech API (TTS + Speech Recognition — browser built-in, free, no API key needed)
 - localStorage for offline progress persistence
