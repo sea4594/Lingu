@@ -23,7 +23,6 @@ const DEFAULT_SETTINGS: FlashcardSettings = {
   showContextOnBack: true,
   ttsRate: 1,
   ttsStyle: 0.2,
-  autoListenOnCard: false,
 };
 
 const DEFAULT_STATE: JapaneseTrainerState = {

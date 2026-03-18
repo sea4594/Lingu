@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { JAPANESE_VOCAB_BY_ID, JAPANESE_VOCAB_SIZE } from './data/japaneseVocabulary';
 import { useJapaneseTrainer } from './hooks/useJapaneseTrainer';
 import { useJapaneseTTS } from './hooks/useJapaneseTTS';
@@ -133,7 +133,6 @@ function App() {
     if (
       view !== 'flashcards' ||
       flashcardMode !== 'speak-japanese' ||
-      !state.settings.autoListenOnCard ||
       !isMicArmed ||
       !currentCard ||
       !isRecognitionSupported ||
@@ -161,7 +160,6 @@ function App() {
     isRecognitionSupported,
     isRecognizing,
     startSpeechCheck,
-    state.settings.autoListenOnCard,
     view,
   ]);
 
@@ -189,6 +187,11 @@ function App() {
   };
 
   const moveCard = (direction: 'next' | 'prev') => {
+    if (isRecognizing) {
+      stopRecognition();
+      setIsRecognizing(false);
+    }
+
     if (historyIds.length === 0 && fallbackCard) {
       setHistoryIds([fallbackCard.id]);
       setHistoryIndex(0);
@@ -248,6 +251,25 @@ function App() {
       moveCard('next');
     }
     setTouchStartX(null);
+  };
+
+  const attachSwipeHandlers = {
+    onTouchStart: (event: TouchEvent<HTMLElement>) => handleSwipeStart(event.touches[0].clientX),
+    onTouchEnd: (event: TouchEvent<HTMLElement>) => handleSwipeEnd(event.changedTouches[0].clientX),
+    onMouseDown: (event: MouseEvent<HTMLElement>) => handleSwipeStart(event.clientX),
+    onMouseUp: (event: MouseEvent<HTMLElement>) => handleSwipeEnd(event.clientX),
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (flashcardMode === 'flip' && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        setFlipped((prev) => !prev);
+      }
+      if (event.key === 'ArrowLeft') {
+        moveCard('prev');
+      }
+      if (event.key === 'ArrowRight') {
+        moveCard('next');
+      }
+    },
   };
 
   const applyCheckedSelections = () => {
@@ -399,24 +421,9 @@ function App() {
                   <article
                     className={`flashcard ${flipped ? 'is-flipped' : ''}`}
                     onClick={() => setFlipped((prev) => !prev)}
-                    onTouchStart={(event) => handleSwipeStart(event.touches[0].clientX)}
-                    onTouchEnd={(event) => handleSwipeEnd(event.changedTouches[0].clientX)}
-                    onMouseDown={(event) => handleSwipeStart(event.clientX)}
-                    onMouseUp={(event) => handleSwipeEnd(event.clientX)}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setFlipped((prev) => !prev);
-                      }
-                      if (event.key === 'ArrowLeft') {
-                        moveCard('prev');
-                      }
-                      if (event.key === 'ArrowRight') {
-                        moveCard('next');
-                      }
-                    }}
+                    {...attachSwipeHandlers}
                   >
                     {!flipped ? (
                       <div className="flashcard-face">
@@ -497,24 +504,18 @@ function App() {
                     )}
                   </article>
                 ) : (
-                  <article className="flashcard">
+                  <article className="flashcard" role="button" tabIndex={0} {...attachSwipeHandlers}>
                     <div className="flashcard-face">
                       <p className="muted">Speak the Japanese for:</p>
                       <h2>{currentCard.english}</h2>
                       <p>{currentCard.context}</p>
-                      <div className="score-controls">
+                      <div className="speech-actions">
                         <button
                           type="button"
-                          className="button button-soft"
-                          onClick={() => speakJapanese(currentCard.japanese)}
-                          disabled={isSpeaking}
-                        >
-                          Hear answer
-                        </button>
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => {
+                          className={`mic-button ${isRecognizing ? 'is-active' : 'is-idle'}`}
+                          aria-label={isRecognizing ? 'Stop microphone' : 'Start microphone'}
+                          onClick={(event) => {
+                            event.stopPropagation();
                             if (isRecognizing) {
                               stopRecognition();
                               setIsRecognizing(false);
@@ -527,9 +528,13 @@ function App() {
                           }}
                           disabled={!isRecognitionSupported}
                         >
-                          {isRecognizing ? 'Stop mic' : 'Start mic'}
+                          <svg viewBox="0 0 24 24" aria-hidden="true" className="mic-icon">
+                            <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.08A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z" fill="currentColor" />
+                          </svg>
                         </button>
                       </div>
+
+                      <p className="muted">Swipe left or right to move between cards.</p>
 
                       {!isRecognitionSupported && (
                         <p className="muted">Speech recognition is not available in this browser.</p>
@@ -568,11 +573,6 @@ function App() {
                     </div>
                   </article>
                 )}
-
-                <div className="flashcard-controls">
-                  <button type="button" className="button button-soft" onClick={() => moveCard('prev')}>Previous</button>
-                  <button type="button" className="button button-soft" onClick={() => moveCard('next')}>Next</button>
-                </div>
 
                 {flipped && flashcardMode === 'flip' && (
                   <div className="score-controls">
@@ -775,15 +775,6 @@ function App() {
                 onChange={(event) => updateSettings({ showContextOnBack: event.target.checked })}
               />
               Show usage context on back
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={state.settings.autoListenOnCard}
-                onChange={(event) => updateSettings({ autoListenOnCard: event.target.checked })}
-              />
-              Auto-listen in Speak Japanese mode when a new card appears
             </label>
 
             <section className="settings-summary">

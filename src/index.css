@@ -220,6 +220,63 @@ nav button {
   margin: 0.45rem 0 0;
 }
 
+.speech-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.mic-button {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.mic-button:hover {
+  transform: translateY(-1px);
+}
+
+.mic-button.is-idle {
+  background: #d8e3ef;
+  color: #36526d;
+  box-shadow: 0 10px 20px rgb(44 74 108 / 12%);
+}
+
+.mic-button.is-active {
+  background: #1f3650;
+  color: #fff7f0;
+  box-shadow: 0 0 0 0 rgb(31 54 80 / 42%);
+  animation: mic-pulse 1.4s ease-out infinite;
+}
+
+.mic-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mic-icon {
+  width: 30px;
+  height: 30px;
+}
+
+@keyframes mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(31 54 80 / 42%);
+  }
+  70% {
+    box-shadow: 0 0 0 18px rgb(31 54 80 / 0%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(31 54 80 / 0%);
+  }
+}
+
 .context-line {
   font-size: 0.95rem;
   color: #3f4f5f;
