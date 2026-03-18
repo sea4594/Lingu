@@ -14,7 +14,7 @@ import type {
   WordLearningStats,
 } from '../types';
 
-const STORAGE_KEY = 'lingu-japanese-trainer-v3';
+const STORAGE_KEY = 'lingu-japanese-trainer-v4';
 
 const DEFAULT_SETTINGS: FlashcardSettings = {
   direction: 'en-to-ja',
