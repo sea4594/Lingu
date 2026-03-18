@@ -19,7 +19,7 @@ type SpeechResult = {
 const normalizeSpeechInput = (value: string): string =>
   stripAccents(value)
     .toLowerCase()
-    .replace(/[\p{P}\p{S}\s]/gu, '')
+    .replace(/[\s.,!?;:'"()[\]{}<>@#$%^&*+=|~`\\/_-]/g, '')
     .trim();
 
 const similarity = (left: string, right: string): number => {
