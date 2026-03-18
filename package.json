@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run sync:pages-assets",
+    "sync:pages-assets": "node scripts/sync-pages-assets.mjs",
+    "verify:pages-build": "node scripts/verify-pages-build.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
