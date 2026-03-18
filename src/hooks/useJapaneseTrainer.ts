@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS: FlashcardSettings = {
   showContextOnBack: true,
   ttsRate: 1,
   ttsStyle: 0.2,
+  autoListenOnCard: false,
 };
 
 const DEFAULT_STATE: JapaneseTrainerState = {
@@ -354,6 +355,42 @@ export const useJapaneseTrainer = () => {
     });
   }, [update]);
 
+  const overrideLastIncorrectAsCorrect = useCallback((wordId: string) => {
+    update((prev) => {
+      const now = Date.now();
+      const existing = prev.statsByWordId[wordId];
+      if (!existing || existing.incorrect <= 0) {
+        return prev;
+      }
+
+      const correctedStats: WordLearningStats = {
+        ...existing,
+        correct: existing.correct + 1,
+        incorrect: Math.max(0, existing.incorrect - 1),
+      };
+
+      const attempts = correctedStats.correct + correctedStats.incorrect;
+      const accuracy = attempts > 0 ? correctedStats.correct / attempts : 0;
+      const nextInterval = Math.max(
+        0.5,
+        (Math.max(correctedStats.intervalDays, 0.2) || 0.5) * (1.35 + accuracy * 0.4),
+      );
+
+      correctedStats.intervalDays = nextInterval;
+      correctedStats.lastSeenAt = now;
+      correctedStats.nextDueAt = now + nextInterval * 24 * 60 * 60 * 1000;
+      correctedStats.comprehension = Math.min(100, Math.max(0, correctedStats.comprehension + 24));
+
+      return {
+        ...prev,
+        statsByWordId: {
+          ...prev.statsByWordId,
+          [wordId]: correctedStats,
+        },
+      };
+    });
+  }, [update]);
+
   const activeEntries = useMemo(
     () => state.activeWordIds
       .map((wordId) => JAPANESE_VOCAB_BY_ID[wordId])
@@ -433,6 +470,7 @@ export const useJapaneseTrainer = () => {
     removeWord,
     updateSettings,
     recordCardResult,
+    overrideLastIncorrectAsCorrect,
     activeEntries,
     activeGroups,
     upcomingGroups,

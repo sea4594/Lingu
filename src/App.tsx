@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { JAPANESE_VOCAB_BY_ID, JAPANESE_VOCAB_SIZE } from './data/japaneseVocabulary';
 import { useJapaneseTrainer } from './hooks/useJapaneseTrainer';
 import { useJapaneseTTS } from './hooks/useJapaneseTTS';
@@ -12,6 +12,8 @@ type SpeechResult = {
   transcript: string;
   correct: boolean;
   confidence: number;
+  canOverride: boolean;
+  overridden?: boolean;
 };
 
 const normalizeSpeechInput = (value: string): string =>
@@ -41,6 +43,7 @@ function App() {
     removeWord,
     updateSettings,
     recordCardResult,
+    overrideLastIncorrectAsCorrect,
     activeEntries,
     activeGroups,
     upcomingGroups,
@@ -50,7 +53,7 @@ function App() {
     totalAccuracy,
   } = useJapaneseTrainer();
   const { speak, isSpeaking, providerLabel, hasPremiumVoice } = useJapaneseTTS();
-  const { recognize, isRecognitionSupported } = useSpeech();
+  const { recognize, stopRecognition, isRecognitionSupported } = useSpeech();
 
   const [view, setView] = useState<AppView>('flashcards');
   const [isTakingPlacementQuiz, setIsTakingPlacementQuiz] = useState(false);
@@ -63,7 +66,9 @@ function App() {
   const [flipped, setFlipped] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const [isMicArmed, setIsMicArmed] = useState(true);
   const [speechResult, setSpeechResult] = useState<SpeechResult | null>(null);
+  const autoListenedCardIdRef = useRef<string | null>(null);
 
   const [showPicker, setShowPicker] = useState(false);
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
@@ -86,7 +91,7 @@ function App() {
     });
   };
 
-  const startSpeechCheck = async () => {
+  const startSpeechCheck = useCallback(async () => {
     if (!currentCard || !isRecognitionSupported || isRecognizing) {
       return;
     }
@@ -95,7 +100,7 @@ function App() {
     setIsRecognizing(true);
 
     try {
-      const transcript = await recognize('ja-JP', 8000);
+      const transcript = await recognize('ja-JP', 10000);
       const japaneseScore = similarity(transcript, currentCard.japanese);
       const romajiScore = similarity(transcript, currentCard.romaji);
       const bestScore = Math.max(japaneseScore, romajiScore);
@@ -105,19 +110,60 @@ function App() {
         transcript,
         correct,
         confidence: Math.round(bestScore * 100),
+        canOverride: !correct,
       });
 
       recordCardResult(currentCard.id, correct);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      const noSpeech = message.includes('timed out') || message.includes('no-speech') || message.includes('aborted');
+
       setSpeechResult({
-        transcript: 'Could not capture speech. Please try again.',
+        transcript: noSpeech ? 'No speech detected after 10 seconds. Listening stopped.' : 'Could not capture speech. Please try again.',
         correct: false,
         confidence: 0,
+        canOverride: false,
       });
     } finally {
       setIsRecognizing(false);
     }
-  };
+  }, [currentCard, isRecognitionSupported, isRecognizing, recognize, recordCardResult]);
+
+  useEffect(() => {
+    if (
+      view !== 'flashcards' ||
+      flashcardMode !== 'speak-japanese' ||
+      !state.settings.autoListenOnCard ||
+      !isMicArmed ||
+      !currentCard ||
+      !isRecognitionSupported ||
+      isRecognizing
+    ) {
+      return;
+    }
+
+    if (autoListenedCardIdRef.current === currentCard.id) {
+      return;
+    }
+
+    autoListenedCardIdRef.current = currentCard.id;
+    const timer = window.setTimeout(() => {
+      void startSpeechCheck();
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    currentCard,
+    flashcardMode,
+    isMicArmed,
+    isRecognitionSupported,
+    isRecognizing,
+    startSpeechCheck,
+    state.settings.autoListenOnCard,
+    view,
+  ]);
 
   const handlePlacementAnswer = (known: boolean) => {
     const question = placementQuestions[placementIndex];
@@ -148,6 +194,7 @@ function App() {
       setHistoryIndex(0);
       setFlipped(false);
       setSpeechResult(null);
+      autoListenedCardIdRef.current = null;
       if (direction === 'prev') {
         return;
       }
@@ -158,6 +205,7 @@ function App() {
         setHistoryIndex((prev) => prev - 1);
         setFlipped(false);
         setSpeechResult(null);
+        autoListenedCardIdRef.current = null;
       }
       return;
     }
@@ -166,6 +214,7 @@ function App() {
       setHistoryIndex((prev) => prev + 1);
       setFlipped(false);
       setSpeechResult(null);
+      autoListenedCardIdRef.current = null;
       return;
     }
 
@@ -179,6 +228,7 @@ function App() {
     setHistoryIndex((prev) => prev + 1);
     setFlipped(false);
     setSpeechResult(null);
+    autoListenedCardIdRef.current = null;
   };
 
   const handleSwipeStart = (clientX: number) => {
@@ -315,6 +365,11 @@ function App() {
                 onClick={() => {
                   setFlashcardMode('flip');
                   setSpeechResult(null);
+                  setIsMicArmed(false);
+                  if (isRecognizing) {
+                    stopRecognition();
+                    setIsRecognizing(false);
+                  }
                 }}
               >
                 Flip cards
@@ -326,6 +381,7 @@ function App() {
                   setFlashcardMode('speak-japanese');
                   setFlipped(false);
                   setSpeechResult(null);
+                  setIsMicArmed(true);
                 }}
               >
                 Speak Japanese
@@ -423,6 +479,17 @@ function App() {
                           <>
                             <h2>{currentCard.english}</h2>
                             <p>{currentCard.japanese}</p>
+                            <button
+                              type="button"
+                              className="tts-button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                speakJapanese(currentCard.japanese);
+                              }}
+                              disabled={isSpeaking}
+                            >
+                              Speak Japanese
+                            </button>
                             {state.settings.showContextOnBack && <p className="context-line">{currentCard.context}</p>}
                           </>
                         )}
@@ -448,11 +515,19 @@ function App() {
                           type="button"
                           className="button"
                           onClick={() => {
+                            if (isRecognizing) {
+                              stopRecognition();
+                              setIsRecognizing(false);
+                              setIsMicArmed(false);
+                              return;
+                            }
+
+                            setIsMicArmed(true);
                             void startSpeechCheck();
                           }}
-                          disabled={!isRecognitionSupported || isRecognizing}
+                          disabled={!isRecognitionSupported}
                         >
-                          {isRecognizing ? 'Listening…' : 'Speak now'}
+                          {isRecognizing ? 'Stop mic' : 'Start mic'}
                         </button>
                       </div>
 
@@ -466,6 +541,28 @@ function App() {
                           <p>Heard: {speechResult.transcript}</p>
                           <p>Match score: {speechResult.confidence}%</p>
                           <p>Target: {currentCard.japanese} ({currentCard.romaji})</p>
+                          {!speechResult.correct && speechResult.canOverride && !speechResult.overridden && (
+                            <button
+                              type="button"
+                              className="button"
+                              onClick={() => {
+                                overrideLastIncorrectAsCorrect(currentCard.id);
+                                setSpeechResult((prev) => {
+                                  if (!prev) {
+                                    return prev;
+                                  }
+                                  return {
+                                    ...prev,
+                                    correct: true,
+                                    canOverride: false,
+                                    overridden: true,
+                                  };
+                                });
+                              }}
+                            >
+                              I got this right
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -678,6 +775,15 @@ function App() {
                 onChange={(event) => updateSettings({ showContextOnBack: event.target.checked })}
               />
               Show usage context on back
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={state.settings.autoListenOnCard}
+                onChange={(event) => updateSettings({ autoListenOnCard: event.target.checked })}
+              />
+              Auto-listen in Speak Japanese mode when a new card appears
             </label>
 
             <section className="settings-summary">

@@ -183,6 +183,7 @@ export interface FlashcardSettings {
   showContextOnBack: boolean;
   ttsRate: number;
   ttsStyle: number;
+  autoListenOnCard: boolean;
 }
 
 export interface PlacementQuestion {
