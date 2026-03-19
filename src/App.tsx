@@ -135,7 +135,6 @@ function App() {
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
   const [checkedWordIds, setCheckedWordIds] = useState<Record<string, boolean>>({});
   const isIOSMicMode = useMemo(() => isIOSLikeDevice(), []);
-  const micEarlyRetryDoneRef = useRef(false);
 
   const studyPoolEntries = useMemo(() => {
     if (studyMode !== 'group') {
@@ -241,34 +240,21 @@ function App() {
         confidence: Math.round(bestScore * 100),
         canOverride: !correct,
       });
-      micEarlyRetryDoneRef.current = false;
 
       recordCardResult(currentCard.id, correct);
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : '';
       const manuallyStopped = message.includes('manually stopped');
       if (manuallyStopped) {
-        micEarlyRetryDoneRef.current = false;
-        return;
-      }
-
-      const endedEarly = message.includes('ended early');
-      if (endedEarly && isIOSMicMode && !micEarlyRetryDoneRef.current) {
-        micEarlyRetryDoneRef.current = true;
-        window.setTimeout(() => {
-          void startSpeechCheck();
-        }, 260);
         return;
       }
 
       const noSpeech = message.includes('timed out') || message.includes('no-speech');
       if (noSpeech) {
-        micEarlyRetryDoneRef.current = false;
         setSpeechResult(null);
         return;
       }
 
-      micEarlyRetryDoneRef.current = false;
       setSpeechResult(null);
     } finally {
       recognitionAttemptInFlightRef.current = false;
@@ -820,7 +806,6 @@ function App() {
                                 if (isRecognizing) {
                                   stopRecognition();
                                   recognitionAttemptInFlightRef.current = false;
-                                  micEarlyRetryDoneRef.current = false;
                                   setIsRecognizing(false);
                                   setIsMicArmed(false);
                                   return;
@@ -836,7 +821,6 @@ function App() {
                                     // Ignore storage errors; mic still works for this session.
                                   }
                                 }
-                                micEarlyRetryDoneRef.current = false;
                                 void startSpeechCheck();
                               }}
                               disabled={!isRecognitionSupported}

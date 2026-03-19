@@ -6,6 +6,7 @@ interface ISpeechRecognition extends EventTarget {
   continuous?: boolean;
   interimResults: boolean;
   maxAlternatives: number;
+  onstart?: (() => void) | null;
   onresult: ((event: ISpeechRecognitionEvent) => void) | null;
   onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
@@ -38,11 +39,24 @@ interface SpeechOptions {
   volume?: number;
 }
 
+const isIOSLikeDevice = (): boolean => {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const touchPoints = navigator.maxTouchPoints || 0;
+
+  return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
+};
+
 export const useSpeech = () => {
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const pendingRejectRef = useRef<((reason?: unknown) => void) | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manuallyStoppedRef = useRef(false);
+  const micPermissionPrimedRef = useRef(false);
 
   /** Speak text using Web SpeechSynthesis API */
   const speak = useCallback((text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -81,6 +95,20 @@ export const useSpeech = () => {
   const isRecognitionSupported =
     typeof window !== 'undefined' && getSpeechRecognitionCtor() !== null;
 
+  const primeMicrophonePermission = useCallback(async () => {
+    if (!isIOSLikeDevice() || micPermissionPrimedRef.current) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    micPermissionPrimedRef.current = true;
+  }, []);
+
   /** Start speech recognition and return the transcript */
   const recognize = useCallback(
     (lang = 'en-US', timeout = 8000): Promise<string> => {
@@ -105,7 +133,6 @@ export const useSpeech = () => {
 
         let settled = false;
         let transcript = '';
-        const startedAt = Date.now();
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
@@ -119,7 +146,7 @@ export const useSpeech = () => {
         const recognition = new Ctor();
         recognitionRef.current = recognition;
         recognition.lang = lang;
-        recognition.continuous = true;
+        recognition.continuous = false;
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
@@ -151,15 +178,6 @@ export const useSpeech = () => {
             return;
           }
 
-          const elapsedMs = Date.now() - startedAt;
-          const earlyEnd = elapsedMs < 1200;
-          if (earlyEnd && (event.error === 'aborted' || event.error === 'network' || event.error === 'no-speech')) {
-            settled = true;
-            cleanup();
-            reject(new Error('Recognition ended early'));
-            return;
-          }
-
           settled = true;
           cleanup();
           reject(new Error(`Recognition error: ${event.error}`));
@@ -184,27 +202,30 @@ export const useSpeech = () => {
             return;
           }
 
-          const elapsedMs = Date.now() - startedAt;
-          if (elapsedMs < 1200) {
-            settled = true;
-            cleanup();
-            reject(new Error('Recognition ended early'));
-            return;
-          }
-
           settled = true;
           cleanup();
           reject(new Error('Recognition timed out'));
         };
 
-        try {
-          recognition.start();
-        } catch (e) {
-          settled = true;
-          cleanup();
-          reject(new Error(`Failed to start recognition: ${e instanceof Error ? e.message : String(e)}`));
-          return;
-        }
+        void (async () => {
+          try {
+            await primeMicrophonePermission();
+          } catch {
+            // Ignore priming errors and still try recognition.
+          }
+
+          if (settled || manuallyStoppedRef.current) {
+            return;
+          }
+
+          try {
+            recognition.start();
+          } catch (e) {
+            settled = true;
+            cleanup();
+            reject(new Error(`Failed to start recognition: ${e instanceof Error ? e.message : String(e)}`));
+          }
+        })();
 
         timeoutIdRef.current = setTimeout(() => {
           if (settled) {
@@ -226,7 +247,7 @@ export const useSpeech = () => {
         }, timeout);
       });
     },
-    []
+    [primeMicrophonePermission]
   );
 
   const stopRecognition = useCallback(() => {
