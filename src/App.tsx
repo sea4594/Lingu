@@ -711,7 +711,6 @@ function App() {
                         {state.settings.direction === 'en-to-ja' ? (
                           <>
                             <h2>{currentCard.english}</h2>
-                            <p>Tap to reveal Japanese</p>
                           </>
                         ) : (
                           <>
