@@ -115,6 +115,7 @@ function App() {
     }
   });
   const autoListenedCardIdRef = useRef<string | null>(null);
+  const recognitionAttemptInFlightRef = useRef(false);
   const dragStartXRef = useRef<number | null>(null);
   const isAnimatingSwipeRef = useRef(false);
 
@@ -193,10 +194,17 @@ function App() {
   }, [activeGroups, beginFlashcards, state.activeWordIds]);
 
   const startSpeechCheck = useCallback(async () => {
-    if (!currentCard || !isRecognitionSupported || isRecognizing || isAnimatingSwipeRef.current) {
+    if (
+      !currentCard ||
+      !isRecognitionSupported ||
+      isRecognizing ||
+      isAnimatingSwipeRef.current ||
+      recognitionAttemptInFlightRef.current
+    ) {
       return;
     }
 
+    recognitionAttemptInFlightRef.current = true;
     setSpeechResult(null);
     setIsRecognizing(true);
 
@@ -236,6 +244,7 @@ function App() {
 
       setSpeechResult(null);
     } finally {
+      recognitionAttemptInFlightRef.current = false;
       setIsRecognizing(false);
     }
   }, [currentCard, isRecognitionSupported, isRecognizing, recognize, recordCardResult]);
@@ -308,6 +317,7 @@ function App() {
 
     if (isRecognizing) {
       stopRecognition();
+      recognitionAttemptInFlightRef.current = false;
       setIsRecognizing(false);
     }
 
@@ -780,12 +790,14 @@ function App() {
                                 event.stopPropagation();
                                 if (isRecognizing) {
                                   stopRecognition();
+                                  recognitionAttemptInFlightRef.current = false;
                                   setIsRecognizing(false);
                                   setIsMicArmed(false);
                                   return;
                                 }
 
                                 setIsMicArmed(true);
+                                autoListenedCardIdRef.current = currentCard.id;
                                 if (!hasMicPrimed) {
                                   setHasMicPrimed(true);
                                   try {

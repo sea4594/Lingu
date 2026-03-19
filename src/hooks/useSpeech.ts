@@ -3,6 +3,7 @@ import { useCallback, useRef } from 'react';
 // Web Speech API types (vendor-prefixed in many browsers)
 interface ISpeechRecognition extends EventTarget {
   lang: string;
+  continuous?: boolean;
   interimResults: boolean;
   maxAlternatives: number;
   onresult: ((event: ISpeechRecognitionEvent) => void) | null;
@@ -131,6 +132,7 @@ export const useSpeech = () => {
           const recognition = new Ctor();
           recognitionRef.current = recognition;
           recognition.lang = lang;
+          recognition.continuous = true;
           recognition.interimResults = false;
           recognition.maxAlternatives = 3;
 
