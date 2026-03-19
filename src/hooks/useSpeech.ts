@@ -107,6 +107,8 @@ export const useSpeech = () => {
         let transcript = '';
         const deadlineAt = Date.now() + timeout;
         let restartTimerId: ReturnType<typeof setTimeout> | null = null;
+        let attemptCount = 0;
+        const maxAttempts = 12;
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
@@ -142,6 +144,14 @@ export const useSpeech = () => {
 
         const startRecognition = () => {
           if (settled || manuallyStoppedRef.current || remainingMs() <= 0) {
+            return;
+          }
+
+          attemptCount += 1;
+          if (attemptCount > maxAttempts) {
+            settled = true;
+            cleanup();
+            reject(new Error('Recognition timed out'));
             return;
           }
 
@@ -188,7 +198,7 @@ export const useSpeech = () => {
             // iOS Safari emits transient recoverable errors while waking the microphone.
             const recoverable = error === 'network' || error === 'aborted' || error === 'no-speech';
             if (recoverable) {
-              queueRestart(180);
+              queueRestart(360);
               return;
             }
 
@@ -217,7 +227,7 @@ export const useSpeech = () => {
             }
 
             if (remainingMs() > 0) {
-              queueRestart(120);
+              queueRestart(280);
               return;
             }
 
@@ -235,7 +245,7 @@ export const useSpeech = () => {
 
             if (remainingMs() > 0) {
               // iOS can throw InvalidStateError during quick restart; retry instead of failing.
-              queueRestart(220);
+              queueRestart(420);
               return;
             }
 
