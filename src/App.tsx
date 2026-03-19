@@ -204,12 +204,7 @@ function App() {
       const transcript = await recognize('ja-JP', 10000);
       const normalizedTranscript = normalizeSpeechInput(transcript);
       if (!normalizedTranscript) {
-        setSpeechResult({
-          transcript: 'No clear speech detected. Try again.',
-          correct: false,
-          confidence: 0,
-          canOverride: false,
-        });
+        setSpeechResult(null);
         return;
       }
 
@@ -234,12 +229,12 @@ function App() {
       }
 
       const noSpeech = message.includes('timed out') || message.includes('no-speech');
-      setSpeechResult({
-        transcript: noSpeech ? 'No speech detected after 10 seconds. Listening stopped.' : 'Could not capture speech. Please try again.',
-        correct: false,
-        confidence: 0,
-        canOverride: false,
-      });
+      if (noSpeech) {
+        setSpeechResult(null);
+        return;
+      }
+
+      setSpeechResult(null);
     } finally {
       setIsRecognizing(false);
     }

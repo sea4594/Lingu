@@ -42,9 +42,6 @@ export const useSpeech = () => {
   const pendingRejectRef = useRef<((reason?: unknown) => void) | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manuallyStoppedRef = useRef(false);
-  const restartCountRef = useRef(0);
-  const maxRestartsRef = useRef(3);
-  const recognizeConfigRef = useRef<{ lang: string; timeout: number }>({ lang: 'en-US', timeout: 8000 });
 
   /** Speak text using Web SpeechSynthesis API */
   const speak = useCallback((text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -93,10 +90,6 @@ export const useSpeech = () => {
           return;
         }
 
-        // Store config for potential restarts
-        recognizeConfigRef.current = { lang, timeout };
-        restartCountRef.current = 0;
-
         if (timeoutIdRef.current) {
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = null;
@@ -112,7 +105,6 @@ export const useSpeech = () => {
         let settled = false;
         let transcript = '';
         let timeoutFired = false;
-        const startTime = Date.now();
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
@@ -121,6 +113,18 @@ export const useSpeech = () => {
           }
           recognitionRef.current = null;
           pendingRejectRef.current = null;
+        };
+
+        const scheduleRestart = (delayMs = 120) => {
+          if (settled || manuallyStoppedRef.current || timeoutFired) {
+            return;
+          }
+
+          window.setTimeout(() => {
+            if (!settled && !manuallyStoppedRef.current && !timeoutFired) {
+              startRecognition();
+            }
+          }, delayMs);
         };
 
         const startRecognition = () => {
@@ -133,27 +137,34 @@ export const useSpeech = () => {
           recognition.onresult = (event: ISpeechRecognitionEvent) => {
             const firstResult = event.results[0]?.[0]?.transcript ?? '';
             transcript = firstResult.trim();
+
+            if (!settled && transcript.length > 0) {
+              settled = true;
+              cleanup();
+              resolve(transcript);
+            }
           };
 
           recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
             if (settled) {
               return;
             }
-            // On iOS, "network" errors are common and often recoverable
             const error = event.error.toLowerCase();
-            if (error === 'network' && restartCountRef.current < maxRestartsRef.current && !timeoutFired) {
-              restartCountRef.current += 1;
-              // Restart after a small delay on network errors (iOS quirk)
-              if (recognitionRef.current) {
-                recognitionRef.current.stop();
-              }
-              setTimeout(() => {
-                if (!manuallyStoppedRef.current && !timeoutFired) {
-                  startRecognition();
-                }
-              }, 100);
+
+            if (manuallyStoppedRef.current) {
+              settled = true;
+              cleanup();
+              reject(new Error('Recognition manually stopped'));
               return;
             }
+
+            // iOS Safari often emits recoverable transient errors while mic permission is warming up.
+            const recoverable = error === 'network' || error === 'aborted' || error === 'no-speech';
+            if (recoverable && !timeoutFired) {
+              scheduleRestart(140);
+              return;
+            }
+
             settled = true;
             cleanup();
             reject(new Error(`Recognition error: ${event.error}`));
@@ -171,35 +182,37 @@ export const useSpeech = () => {
               return;
             }
 
-            // If timeout hasn't fired and we haven't restarted too many times, restart
-            if (!timeoutFired && restartCountRef.current < maxRestartsRef.current) {
-              const elapsed = Date.now() - startTime;
-              if (elapsed < timeout) {
-                restartCountRef.current += 1;
-                // Small delay before restarting to avoid immediate re-end on iOS
-                setTimeout(() => {
-                  if (!manuallyStoppedRef.current && !timeoutFired) {
-                    startRecognition();
-                  }
-                }, 50);
-                return;
-              }
+            if (!timeoutFired) {
+              scheduleRestart();
+              return;
             }
 
             settled = true;
             cleanup();
-            resolve(transcript);
+            if (transcript.length > 0) {
+              resolve(transcript);
+              return;
+            }
+
+            reject(new Error('Recognition timed out'));
           };
 
           try {
             recognition.start();
           } catch (e) {
-            // iOS sometimes throws synchronously
-            if (!settled) {
-              settled = true;
-              cleanup();
-              reject(new Error(`Failed to start recognition: ${e instanceof Error ? e.message : String(e)}`));
+            if (settled || manuallyStoppedRef.current) {
+              return;
             }
+
+            if (!timeoutFired) {
+              // iOS can throw InvalidStateError during quick restart; retry instead of failing.
+              scheduleRestart(180);
+              return;
+            }
+
+            settled = true;
+            cleanup();
+            reject(new Error(`Failed to start recognition: ${e instanceof Error ? e.message : String(e)}`));
           }
         };
 
@@ -223,7 +236,11 @@ export const useSpeech = () => {
   const stopRecognition = useCallback(() => {
     if (recognitionRef.current) {
       manuallyStoppedRef.current = true;
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Ignore stop errors from already-ended iOS sessions.
+      }
       if (pendingRejectRef.current) {
         pendingRejectRef.current(new Error('Recognition manually stopped'));
         pendingRejectRef.current = null;
