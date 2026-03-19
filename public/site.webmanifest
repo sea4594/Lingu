@@ -1,0 +1,19 @@
+{
+  "name": "Lingu",
+  "short_name": "Lingu",
+  "icons": [
+    {
+      "src": "/Lingu/Logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Lingu/Logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}
