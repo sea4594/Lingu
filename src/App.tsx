@@ -95,7 +95,7 @@ function App() {
     totalAccuracy,
   } = useJapaneseTrainer();
   const { speak, isSpeaking, providerLabel, hasPremiumVoice } = useJapaneseTTS();
-  const { recognize, stopRecognition, isRecognitionSupported } = useSpeech();
+  const { recognize, stopRecognition, prepareRecognitionSession, isRecognitionSupported } = useSpeech();
 
   const [view, setView] = useState<AppView>('my-vocab');
   const [lastListView, setLastListView] = useState<ListView>('my-vocab');
@@ -822,6 +822,15 @@ function App() {
                                   }
                                 }
                                 void startSpeechCheck();
+                              }}
+                              onPointerDown={() => {
+                                if (!isIOSMicMode) {
+                                  return;
+                                }
+
+                                void prepareRecognitionSession().catch(() => {
+                                  // Ignore prewarm failures; recognition can still attempt start.
+                                });
                               }}
                               disabled={!isRecognitionSupported}
                             >

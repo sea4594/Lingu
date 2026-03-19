@@ -44,6 +44,7 @@ export const useSpeech = () => {
   const pendingRejectRef = useRef<((reason?: unknown) => void) | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manuallyStoppedRef = useRef(false);
+  const liveMicStreamRef = useRef<MediaStream | null>(null);
 
   /** Speak text using Web SpeechSynthesis API */
   const speak = useCallback((text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -82,6 +83,34 @@ export const useSpeech = () => {
   const isRecognitionSupported =
     typeof window !== 'undefined' && getSpeechRecognitionCtor() !== null;
 
+  const releaseRecognitionSession = useCallback(() => {
+    if (!liveMicStreamRef.current) {
+      return;
+    }
+
+    liveMicStreamRef.current.getTracks().forEach((track) => track.stop());
+    liveMicStreamRef.current = null;
+  }, []);
+
+  const prepareRecognitionSession = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    if (liveMicStreamRef.current) {
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    liveMicStreamRef.current = stream;
+  }, []);
+
   /** Start speech recognition and return the transcript */
   const recognize = useCallback(
     (lang = 'en-US', timeout = 8000): Promise<string> => {
@@ -115,6 +144,7 @@ export const useSpeech = () => {
             clearTimeout(timeoutIdRef.current);
             timeoutIdRef.current = null;
           }
+          releaseRecognitionSession();
           if (restartId) {
             clearTimeout(restartId);
             restartId = null;
@@ -280,15 +310,18 @@ export const useSpeech = () => {
         clearTimeout(timeoutIdRef.current);
         timeoutIdRef.current = null;
       }
+      releaseRecognitionSession();
       recognitionRef.current = null;
     }
-  }, []);
+  }, [releaseRecognitionSession]);
 
   return {
     speak,
     stopSpeaking,
     recognize,
     stopRecognition,
+    prepareRecognitionSession,
+    releaseRecognitionSession,
     isSpeechSupported,
     isRecognitionSupported,
   };
