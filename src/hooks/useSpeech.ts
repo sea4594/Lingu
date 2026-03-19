@@ -105,44 +105,69 @@ export const useSpeech = () => {
 
         let settled = false;
         let transcript = '';
-        let timeoutFired = false;
+        const deadlineAt = Date.now() + timeout;
+        let restartTimerId: ReturnType<typeof setTimeout> | null = null;
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
             clearTimeout(timeoutIdRef.current);
             timeoutIdRef.current = null;
           }
+          if (restartTimerId) {
+            clearTimeout(restartTimerId);
+            restartTimerId = null;
+          }
           recognitionRef.current = null;
           pendingRejectRef.current = null;
         };
 
-        const scheduleRestart = (delayMs = 120) => {
-          if (settled || manuallyStoppedRef.current || timeoutFired) {
+        const remainingMs = () => deadlineAt - Date.now();
+
+        const queueRestart = (delayMs = 120) => {
+          if (settled || manuallyStoppedRef.current || remainingMs() <= 0) {
             return;
           }
 
-          window.setTimeout(() => {
-            if (!settled && !manuallyStoppedRef.current && !timeoutFired) {
+          if (restartTimerId) {
+            return;
+          }
+
+          restartTimerId = window.setTimeout(() => {
+            restartTimerId = null;
+            if (!settled && !manuallyStoppedRef.current && remainingMs() > 0) {
               startRecognition();
             }
           }, delayMs);
         };
 
         const startRecognition = () => {
+          if (settled || manuallyStoppedRef.current || remainingMs() <= 0) {
+            return;
+          }
+
           const recognition = new Ctor();
           recognitionRef.current = recognition;
           recognition.lang = lang;
-          recognition.continuous = true;
-          recognition.interimResults = false;
+          recognition.continuous = false;
+          recognition.interimResults = true;
           recognition.maxAlternatives = 3;
 
           recognition.onresult = (event: ISpeechRecognitionEvent) => {
-            const firstResult = event.results[0]?.[0]?.transcript ?? '';
-            transcript = firstResult.trim();
+            const resultIndex = event.results.length - 1;
+            const latest = event.results[resultIndex]?.[0]?.transcript ?? '';
+            const nextTranscript = latest.trim();
+            if (nextTranscript.length > 0) {
+              transcript = nextTranscript;
+            }
 
             if (!settled && transcript.length > 0) {
               settled = true;
               cleanup();
+              try {
+                recognition.stop();
+              } catch {
+                // Ignore stop errors from already-ended sessions.
+              }
               resolve(transcript);
             }
           };
@@ -160,10 +185,10 @@ export const useSpeech = () => {
               return;
             }
 
-            // iOS Safari often emits recoverable transient errors while mic permission is warming up.
+            // iOS Safari emits transient recoverable errors while waking the microphone.
             const recoverable = error === 'network' || error === 'aborted' || error === 'no-speech';
-            if (recoverable && !timeoutFired) {
-              scheduleRestart(140);
+            if (recoverable) {
+              queueRestart(180);
               return;
             }
 
@@ -184,18 +209,20 @@ export const useSpeech = () => {
               return;
             }
 
-            if (!timeoutFired) {
-              scheduleRestart();
+            if (transcript.length > 0) {
+              settled = true;
+              cleanup();
+              resolve(transcript);
+              return;
+            }
+
+            if (remainingMs() > 0) {
+              queueRestart(120);
               return;
             }
 
             settled = true;
             cleanup();
-            if (transcript.length > 0) {
-              resolve(transcript);
-              return;
-            }
-
             reject(new Error('Recognition timed out'));
           };
 
@@ -206,9 +233,9 @@ export const useSpeech = () => {
               return;
             }
 
-            if (!timeoutFired) {
+            if (remainingMs() > 0) {
               // iOS can throw InvalidStateError during quick restart; retry instead of failing.
-              scheduleRestart(180);
+              queueRestart(220);
               return;
             }
 
@@ -221,13 +248,19 @@ export const useSpeech = () => {
         startRecognition();
 
         timeoutIdRef.current = setTimeout(() => {
-          timeoutFired = true;
           if (!settled && recognitionRef.current) {
             try {
               recognitionRef.current.stop();
             } catch {
               // Ignore errors on stop
             }
+            return;
+          }
+
+          if (!settled) {
+            settled = true;
+            cleanup();
+            reject(new Error('Recognition timed out'));
           }
         }, timeout);
       });
