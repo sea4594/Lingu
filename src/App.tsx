@@ -61,6 +61,18 @@ const shuffleIds = (ids: string[]): string[] => {
   return shuffled;
 };
 
+const isIOSLikeDevice = (): boolean => {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const touchPoints = navigator.maxTouchPoints || 0;
+
+  return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
+};
+
 function App() {
   const {
     state,
@@ -122,6 +134,7 @@ function App() {
   const [showPicker, setShowPicker] = useState(false);
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
   const [checkedWordIds, setCheckedWordIds] = useState<Record<string, boolean>>({});
+  const isIOSMicMode = useMemo(() => isIOSLikeDevice(), []);
 
   const studyPoolEntries = useMemo(() => {
     if (studyMode !== 'group') {
@@ -253,6 +266,7 @@ function App() {
     if (
       view !== 'flashcards' ||
       flashcardMode !== 'speak-japanese' ||
+      isIOSMicMode ||
       !isMicArmed ||
       !currentCard ||
       !isRecognitionSupported ||
@@ -278,6 +292,7 @@ function App() {
   }, [
     currentCard,
     flashcardMode,
+    isIOSMicMode,
     isMicArmed,
     isRecognitionSupported,
     isRecognizing,
