@@ -823,10 +823,19 @@ function App() {
 
                       {speechResult && (
                         <div className={`speech-feedback ${speechResult.correct ? 'is-correct' : 'is-wrong'}`}>
-                          <p>{speechResult.correct ? 'Correct pronunciation' : 'Not quite right'}</p>
-                          <p>Heard: {speechResult.transcript}</p>
-                          <p>Match score: {speechResult.confidence}%</p>
-                          <p>Target: {currentCard.japanese} ({currentCard.romaji})</p>
+                          <h2>{currentCard.japanese}</h2>
+                          <p>{currentCard.romaji}</p>
+                          <button
+                            type="button"
+                            className="word-speak-icon"
+                            aria-label={`Play ${currentCard.japanese} out loud`}
+                            onClick={() => {
+                              speakJapanese(currentCard.japanese);
+                            }}
+                            disabled={isSpeaking}
+                          >
+                            <Volume2 size={16} />
+                          </button>
                           {!speechResult.correct && speechResult.canOverride && !speechResult.overridden && (
                             <button
                               type="button"

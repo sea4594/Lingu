@@ -109,6 +109,7 @@ export const useSpeech = () => {
         recognition.maxAlternatives = 3;
         let settled = false;
         let transcript = '';
+        let timeoutFired = false;
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
@@ -138,30 +139,30 @@ export const useSpeech = () => {
             return;
           }
 
-          settled = true;
-          cleanup();
-
           if (manuallyStoppedRef.current) {
+            settled = true;
+            cleanup();
             reject(new Error('Recognition manually stopped'));
             return;
           }
 
-          if (transcript.length === 0) {
-            reject(new Error('Recognition timed out'));
+          if (!timeoutFired) {
+            recognition.start();
             return;
           }
 
+          settled = true;
+          cleanup();
           resolve(transcript);
         };
 
         recognition.start();
 
         timeoutIdRef.current = setTimeout(() => {
-          if (settled) {
-            return;
+          timeoutFired = true;
+          if (!settled && recognitionRef.current) {
+            recognitionRef.current.stop();
           }
-          recognition.stop();
-          // onend will settle with timeout error if transcript is empty.
         }, timeout);
       });
     },

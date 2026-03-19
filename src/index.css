@@ -652,12 +652,27 @@ nav button {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
-  padding: 0.65rem;
-  text-align: left;
+  padding: 0.75rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.speech-feedback h2 {
+  margin: 0;
+  font-size: 1.8rem;
 }
 
 .speech-feedback p {
-  margin: 0.2rem 0;
+  margin: 0;
+  font-size: 0.95rem;
+  color: #4f5b68;
+}
+
+.speech-feedback .word-speak-icon {
+  margin-top: 0.35rem;
 }
 
 .speech-feedback.is-correct {
