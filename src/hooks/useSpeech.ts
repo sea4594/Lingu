@@ -105,6 +105,7 @@ export const useSpeech = () => {
 
         let settled = false;
         let transcript = '';
+        const startedAt = Date.now();
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
@@ -118,7 +119,7 @@ export const useSpeech = () => {
         const recognition = new Ctor();
         recognitionRef.current = recognition;
         recognition.lang = lang;
-        recognition.continuous = false;
+        recognition.continuous = true;
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
@@ -150,6 +151,15 @@ export const useSpeech = () => {
             return;
           }
 
+          const elapsedMs = Date.now() - startedAt;
+          const earlyEnd = elapsedMs < 1200;
+          if (earlyEnd && (event.error === 'aborted' || event.error === 'network' || event.error === 'no-speech')) {
+            settled = true;
+            cleanup();
+            reject(new Error('Recognition ended early'));
+            return;
+          }
+
           settled = true;
           cleanup();
           reject(new Error(`Recognition error: ${event.error}`));
@@ -171,6 +181,14 @@ export const useSpeech = () => {
             settled = true;
             cleanup();
             resolve(transcript);
+            return;
+          }
+
+          const elapsedMs = Date.now() - startedAt;
+          if (elapsedMs < 1200) {
+            settled = true;
+            cleanup();
+            reject(new Error('Recognition ended early'));
             return;
           }
 
