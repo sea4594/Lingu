@@ -61,18 +61,6 @@ const shuffleIds = (ids: string[]): string[] => {
   return shuffled;
 };
 
-const isIOSLikeDevice = (): boolean => {
-  if (typeof navigator === 'undefined') {
-    return false;
-  }
-
-  const ua = navigator.userAgent || '';
-  const platform = navigator.platform || '';
-  const touchPoints = navigator.maxTouchPoints || 0;
-
-  return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
-};
-
 function App() {
   const {
     state,
@@ -95,7 +83,7 @@ function App() {
     totalAccuracy,
   } = useJapaneseTrainer();
   const { speak, isSpeaking, providerLabel, hasPremiumVoice } = useJapaneseTTS();
-  const { recognize, stopRecognition, prepareRecognitionSession, isRecognitionSupported } = useSpeech();
+  const { recognize, stopRecognition, isRecognitionSupported } = useSpeech();
 
   const [view, setView] = useState<AppView>('my-vocab');
   const [lastListView, setLastListView] = useState<ListView>('my-vocab');
@@ -127,14 +115,12 @@ function App() {
     }
   });
   const autoListenedCardIdRef = useRef<string | null>(null);
-  const recognitionAttemptInFlightRef = useRef(false);
   const dragStartXRef = useRef<number | null>(null);
   const isAnimatingSwipeRef = useRef(false);
 
   const [showPicker, setShowPicker] = useState(false);
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
   const [checkedWordIds, setCheckedWordIds] = useState<Record<string, boolean>>({});
-  const isIOSMicMode = useMemo(() => isIOSLikeDevice(), []);
 
   const studyPoolEntries = useMemo(() => {
     if (studyMode !== 'group') {
@@ -207,17 +193,10 @@ function App() {
   }, [activeGroups, beginFlashcards, state.activeWordIds]);
 
   const startSpeechCheck = useCallback(async () => {
-    if (
-      !currentCard ||
-      !isRecognitionSupported ||
-      isRecognizing ||
-      isAnimatingSwipeRef.current ||
-      recognitionAttemptInFlightRef.current
-    ) {
+    if (!currentCard || !isRecognitionSupported || isRecognizing || isAnimatingSwipeRef.current) {
       return;
     }
 
-    recognitionAttemptInFlightRef.current = true;
     setSpeechResult(null);
     setIsRecognizing(true);
 
@@ -225,7 +204,12 @@ function App() {
       const transcript = await recognize('ja-JP', 10000);
       const normalizedTranscript = normalizeSpeechInput(transcript);
       if (!normalizedTranscript) {
-        setSpeechResult(null);
+        setSpeechResult({
+          transcript: 'No clear speech detected. Try again.',
+          correct: false,
+          confidence: 0,
+          canOverride: false,
+        });
         return;
       }
 
@@ -250,23 +234,21 @@ function App() {
       }
 
       const noSpeech = message.includes('timed out') || message.includes('no-speech');
-      if (noSpeech) {
-        setSpeechResult(null);
-        return;
-      }
-
-      setSpeechResult(null);
+      setSpeechResult({
+        transcript: noSpeech ? 'No speech detected after 10 seconds. Listening stopped.' : 'Could not capture speech. Please try again.',
+        correct: false,
+        confidence: 0,
+        canOverride: false,
+      });
     } finally {
-      recognitionAttemptInFlightRef.current = false;
       setIsRecognizing(false);
     }
-  }, [currentCard, isIOSMicMode, isRecognitionSupported, isRecognizing, recognize, recordCardResult]);
+  }, [currentCard, isRecognitionSupported, isRecognizing, recognize, recordCardResult]);
 
   useEffect(() => {
     if (
       view !== 'flashcards' ||
       flashcardMode !== 'speak-japanese' ||
-      isIOSMicMode ||
       !isMicArmed ||
       !currentCard ||
       !isRecognitionSupported ||
@@ -292,7 +274,6 @@ function App() {
   }, [
     currentCard,
     flashcardMode,
-    isIOSMicMode,
     isMicArmed,
     isRecognitionSupported,
     isRecognizing,
@@ -332,7 +313,6 @@ function App() {
 
     if (isRecognizing) {
       stopRecognition();
-      recognitionAttemptInFlightRef.current = false;
       setIsRecognizing(false);
     }
 
@@ -805,14 +785,12 @@ function App() {
                                 event.stopPropagation();
                                 if (isRecognizing) {
                                   stopRecognition();
-                                  recognitionAttemptInFlightRef.current = false;
                                   setIsRecognizing(false);
                                   setIsMicArmed(false);
                                   return;
                                 }
 
                                 setIsMicArmed(true);
-                                autoListenedCardIdRef.current = currentCard.id;
                                 if (!hasMicPrimed) {
                                   setHasMicPrimed(true);
                                   try {
@@ -822,15 +800,6 @@ function App() {
                                   }
                                 }
                                 void startSpeechCheck();
-                              }}
-                              onPointerDown={() => {
-                                if (!isIOSMicMode) {
-                                  return;
-                                }
-
-                                void prepareRecognitionSession().catch(() => {
-                                  // Ignore prewarm failures; recognition can still attempt start.
-                                });
                               }}
                               disabled={!isRecognitionSupported}
                             >
