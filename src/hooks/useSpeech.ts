@@ -39,6 +39,9 @@ interface SpeechOptions {
 
 export const useSpeech = () => {
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const pendingRejectRef = useRef<((reason?: unknown) => void) | null>(null);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manuallyStoppedRef = useRef(false);
 
   /** Speak text using Web SpeechSynthesis API */
   const speak = useCallback((text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -87,38 +90,78 @@ export const useSpeech = () => {
           return;
         }
 
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
+
         if (recognitionRef.current) {
           recognitionRef.current.stop();
         }
+
+        pendingRejectRef.current = reject;
+        manuallyStoppedRef.current = false;
 
         const recognition = new Ctor();
         recognitionRef.current = recognition;
         recognition.lang = lang;
         recognition.interimResults = false;
         recognition.maxAlternatives = 3;
+        let settled = false;
+        let transcript = '';
 
-        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        const cleanup = () => {
+          if (timeoutIdRef.current) {
+            clearTimeout(timeoutIdRef.current);
+            timeoutIdRef.current = null;
+          }
+          recognitionRef.current = null;
+          pendingRejectRef.current = null;
+        };
 
         recognition.onresult = (event: ISpeechRecognitionEvent) => {
-          if (timeoutId) clearTimeout(timeoutId);
-          const transcript = event.results[0][0].transcript;
-          resolve(transcript);
+          const firstResult = event.results[0]?.[0]?.transcript ?? '';
+          transcript = firstResult.trim();
         };
 
         recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
-          if (timeoutId) clearTimeout(timeoutId);
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
           reject(new Error(`Recognition error: ${event.error}`));
         };
 
         recognition.onend = () => {
-          if (timeoutId) clearTimeout(timeoutId);
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+
+          if (manuallyStoppedRef.current) {
+            reject(new Error('Recognition manually stopped'));
+            return;
+          }
+
+          if (transcript.length === 0) {
+            reject(new Error('Recognition timed out'));
+            return;
+          }
+
+          resolve(transcript);
         };
 
         recognition.start();
 
-        timeoutId = setTimeout(() => {
+        timeoutIdRef.current = setTimeout(() => {
+          if (settled) {
+            return;
+          }
           recognition.stop();
-          reject(new Error('Recognition timed out'));
+          // onend will settle with timeout error if transcript is empty.
         }, timeout);
       });
     },
@@ -127,7 +170,16 @@ export const useSpeech = () => {
 
   const stopRecognition = useCallback(() => {
     if (recognitionRef.current) {
+      manuallyStoppedRef.current = true;
       recognitionRef.current.stop();
+      if (pendingRejectRef.current) {
+        pendingRejectRef.current(new Error('Recognition manually stopped'));
+        pendingRejectRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
       recognitionRef.current = null;
     }
   }, []);

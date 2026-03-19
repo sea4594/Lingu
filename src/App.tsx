@@ -32,6 +32,11 @@ type SpeechResult = {
   overridden?: boolean;
 };
 
+const SWIPE_THRESHOLD_PX = 90;
+const SWIPE_COMMIT_DURATION_MS = 210;
+const MAX_DRAG_OFFSET_PX = 180;
+const MIC_AUTO_START_KEY = 'lingu-japanese-mic-primed-v1';
+
 const normalizeSpeechInput = (value: string): string =>
   stripAccents(value)
     .toLowerCase()
@@ -83,7 +88,7 @@ function App() {
   const [view, setView] = useState<AppView>('my-vocab');
   const [lastListView, setLastListView] = useState<ListView>('my-vocab');
   const [studyMode, setStudyMode] = useState<StudyMode>('all');
-  const [studyGroupId, setStudyGroupId] = useState<string | null>(null);
+  const [, setStudyGroupId] = useState<string | null>(null);
   const [groupSessionWordIds, setGroupSessionWordIds] = useState<string[]>([]);
   const [groupRoundRemainingIds, setGroupRoundRemainingIds] = useState<string[]>([]);
   const [expandedCacheGroupId, setExpandedCacheGroupId] = useState<string | null>(null);
@@ -95,22 +100,26 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState(0);
   const [flashcardMode, setFlashcardMode] = useState<FlashcardMode>('flip');
   const [flipped, setFlipped] = useState(false);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [isDraggingCard, setIsDraggingCard] = useState(false);
+  const [isSwipeSettling, setIsSwipeSettling] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isMicArmed, setIsMicArmed] = useState(true);
   const [speechResult, setSpeechResult] = useState<SpeechResult | null>(null);
+  const [hasMicPrimed, setHasMicPrimed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(MIC_AUTO_START_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const autoListenedCardIdRef = useRef<string | null>(null);
+  const dragStartXRef = useRef<number | null>(null);
+  const isAnimatingSwipeRef = useRef(false);
 
   const [showPicker, setShowPicker] = useState(false);
   const [checkedGroupIds, setCheckedGroupIds] = useState<Record<string, boolean>>({});
   const [checkedWordIds, setCheckedWordIds] = useState<Record<string, boolean>>({});
-
-  const groupStudyLabel = useMemo(() => {
-    if (!studyGroupId) {
-      return null;
-    }
-    return activeGroups.find((group) => group.id === studyGroupId)?.name ?? null;
-  }, [activeGroups, studyGroupId]);
 
   const studyPoolEntries = useMemo(() => {
     if (studyMode !== 'group') {
@@ -183,7 +192,7 @@ function App() {
   }, [activeGroups, beginFlashcards, state.activeWordIds]);
 
   const startSpeechCheck = useCallback(async () => {
-    if (!currentCard || !isRecognitionSupported || isRecognizing) {
+    if (!currentCard || !isRecognitionSupported || isRecognizing || isAnimatingSwipeRef.current) {
       return;
     }
 
@@ -192,6 +201,17 @@ function App() {
 
     try {
       const transcript = await recognize('ja-JP', 10000);
+      const normalizedTranscript = normalizeSpeechInput(transcript);
+      if (!normalizedTranscript) {
+        setSpeechResult({
+          transcript: 'No clear speech detected. Try again.',
+          correct: false,
+          confidence: 0,
+          canOverride: false,
+        });
+        return;
+      }
+
       const japaneseScore = similarity(transcript, currentCard.japanese);
       const romajiScore = similarity(transcript, currentCard.romaji);
       const bestScore = Math.max(japaneseScore, romajiScore);
@@ -207,7 +227,12 @@ function App() {
       recordCardResult(currentCard.id, correct);
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : '';
-      const noSpeech = message.includes('timed out') || message.includes('no-speech') || message.includes('aborted');
+      const manuallyStopped = message.includes('manually stopped');
+      if (manuallyStopped) {
+        return;
+      }
+
+      const noSpeech = message.includes('timed out') || message.includes('no-speech');
       setSpeechResult({
         transcript: noSpeech ? 'No speech detected after 10 seconds. Listening stopped.' : 'Could not capture speech. Please try again.',
         correct: false,
@@ -226,7 +251,9 @@ function App() {
       !isMicArmed ||
       !currentCard ||
       !isRecognitionSupported ||
-      isRecognizing
+      isRecognizing ||
+      flipped ||
+      !hasMicPrimed
     ) {
       return;
     }
@@ -249,6 +276,8 @@ function App() {
     isMicArmed,
     isRecognitionSupported,
     isRecognizing,
+    flipped,
+    hasMicPrimed,
     startSpeechCheck,
     view,
   ]);
@@ -277,6 +306,10 @@ function App() {
   };
 
   const moveCard = (direction: 'next' | 'prev') => {
+    isAnimatingSwipeRef.current = false;
+    setIsSwipeSettling(false);
+    setDragOffsetX(0);
+
     if (isRecognizing) {
       stopRecognition();
       setIsRecognizing(false);
@@ -342,6 +375,22 @@ function App() {
     autoListenedCardIdRef.current = null;
   };
 
+  const triggerSwipeNavigation = useCallback((direction: 'next' | 'prev') => {
+    if (isAnimatingSwipeRef.current) {
+      return;
+    }
+
+    isAnimatingSwipeRef.current = true;
+    setIsSwipeSettling(true);
+
+    const targetOffset = direction === 'next' ? -window.innerWidth : window.innerWidth;
+    setDragOffsetX(targetOffset);
+
+    window.setTimeout(() => {
+      moveCard(direction);
+    }, SWIPE_COMMIT_DURATION_MS);
+  }, [moveCard]);
+
   const removeCurrentCardFromGroupSession = () => {
     if (studyMode !== 'group' || !currentCard) {
       return;
@@ -374,40 +423,83 @@ function App() {
     setHistoryIndex(0);
   };
 
-  const handleSwipeStart = (clientX: number) => {
-    setTouchStartX(clientX);
+  const clampDragOffset = (value: number) => {
+    return Math.max(-MAX_DRAG_OFFSET_PX, Math.min(MAX_DRAG_OFFSET_PX, value));
   };
 
-  const handleSwipeEnd = (clientX: number) => {
-    if (touchStartX === null) {
+  const handleSwipeStart = (clientX: number) => {
+    if (isAnimatingSwipeRef.current) {
       return;
     }
 
-    const delta = clientX - touchStartX;
-    if (delta > 55) {
-      moveCard('prev');
+    dragStartXRef.current = clientX;
+    setIsDraggingCard(true);
+    setIsSwipeSettling(false);
+  };
+
+  const handleSwipeMove = (clientX: number) => {
+    if (dragStartXRef.current === null || isAnimatingSwipeRef.current) {
+      return;
     }
-    if (delta < -55) {
-      moveCard('next');
+
+    const delta = clientX - dragStartXRef.current;
+    setDragOffsetX(clampDragOffset(delta));
+  };
+
+  const handleSwipeEnd = () => {
+    if (dragStartXRef.current === null) {
+      return;
     }
-    setTouchStartX(null);
+
+    const finalOffset = dragOffsetX;
+    dragStartXRef.current = null;
+    setIsDraggingCard(false);
+
+    if (finalOffset > SWIPE_THRESHOLD_PX) {
+      triggerSwipeNavigation('prev');
+      return;
+    }
+
+    if (finalOffset < -SWIPE_THRESHOLD_PX) {
+      triggerSwipeNavigation('next');
+      return;
+    }
+
+    setIsSwipeSettling(true);
+    setDragOffsetX(0);
+    window.setTimeout(() => {
+      setIsSwipeSettling(false);
+    }, SWIPE_COMMIT_DURATION_MS);
   };
 
   const attachSwipeHandlers = {
     onTouchStart: (event: TouchEvent<HTMLElement>) => handleSwipeStart(event.touches[0].clientX),
-    onTouchEnd: (event: TouchEvent<HTMLElement>) => handleSwipeEnd(event.changedTouches[0].clientX),
+    onTouchMove: (event: TouchEvent<HTMLElement>) => handleSwipeMove(event.touches[0].clientX),
+    onTouchEnd: () => handleSwipeEnd(),
+    onTouchCancel: () => handleSwipeEnd(),
     onMouseDown: (event: MouseEvent<HTMLElement>) => handleSwipeStart(event.clientX),
-    onMouseUp: (event: MouseEvent<HTMLElement>) => handleSwipeEnd(event.clientX),
+    onMouseMove: (event: MouseEvent<HTMLElement>) => {
+      if (!isDraggingCard) {
+        return;
+      }
+      handleSwipeMove(event.clientX);
+    },
+    onMouseUp: () => handleSwipeEnd(),
+    onMouseLeave: () => {
+      if (isDraggingCard) {
+        handleSwipeEnd();
+      }
+    },
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
       if (flashcardMode === 'flip' && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault();
         setFlipped((prev) => !prev);
       }
       if (event.key === 'ArrowLeft') {
-        moveCard('prev');
+        triggerSwipeNavigation('prev');
       }
       if (event.key === 'ArrowRight') {
-        moveCard('next');
+        triggerSwipeNavigation('next');
       }
     },
   };
@@ -502,16 +594,19 @@ function App() {
   return (
     <div className="app-shell">
       {view !== 'settings' && (
+        <button
+          type="button"
+          className="icon-button floating-settings"
+          onClick={() => setView('settings')}
+          aria-label="Open settings"
+        >
+          <Settings size={20} />
+        </button>
+      )}
+
+      {view !== 'settings' && (
         <header className="topbar app-header">
           <h1>Lingu</h1>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setView('settings')}
-            aria-label="Open settings"
-          >
-            <Settings size={20} />
-          </button>
         </header>
       )}
 
@@ -554,11 +649,6 @@ function App() {
               >
                 Back to My Vocab
               </button>
-              <p className="muted">
-                {studyMode === 'group'
-                  ? `Studying group: ${groupStudyLabel ?? 'Custom Group Session'}`
-                  : 'Studying all active vocabulary'}
-              </p>
             </div>
 
             <div className="flashcard-controls">
@@ -593,14 +683,13 @@ function App() {
 
             {currentCard ? (
               <>
-                <div className="flashcard-meta">
-                  <span>{currentCard.groupName}</span>
-                  <span>Comprehension: {comprehensionForWord(currentCard.id)}%</span>
-                </div>
-
                 {flashcardMode === 'flip' ? (
                   <article
-                    className={`flashcard ${flipped ? 'is-flipped' : ''}`}
+                    className={`flashcard ${flipped ? 'is-flipped' : ''} ${isDraggingCard ? 'is-dragging' : ''} ${isSwipeSettling ? 'is-swipe-settling' : ''}`}
+                    style={{
+                      transform: `translateX(${dragOffsetX}px) rotate(${dragOffsetX / 30}deg)`,
+                      transition: isDraggingCard ? 'none' : `transform ${SWIPE_COMMIT_DURATION_MS}ms ease`,
+                    }}
                     onClick={() => setFlipped((prev) => !prev)}
                     role="button"
                     tabIndex={0}
@@ -611,17 +700,6 @@ function App() {
                         {state.settings.direction === 'en-to-ja' ? (
                           <>
                             <h2>{currentCard.english}</h2>
-                            <button
-                              type="button"
-                              className="tts-button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                speakJapanese(currentCard.japanese);
-                              }}
-                              disabled={isSpeaking}
-                            >
-                              Speak
-                            </button>
                             <p>Tap to reveal Japanese</p>
                           </>
                         ) : (
@@ -667,55 +745,67 @@ function App() {
                           <>
                             <h2>{currentCard.english}</h2>
                             <p>{currentCard.japanese}</p>
-                            <button
-                              type="button"
-                              className="tts-button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                speakJapanese(currentCard.japanese);
-                              }}
-                              disabled={isSpeaking}
-                            >
-                              Speak Japanese
-                            </button>
-                            {state.settings.showContextOnBack && <p className="context-line">{currentCard.context}</p>}
                           </>
                         )}
                       </div>
                     )}
                   </article>
                 ) : (
-                  <article className="flashcard" role="button" tabIndex={0} {...attachSwipeHandlers}>
+                  <article
+                    className={`flashcard ${flipped ? 'is-flipped' : ''} ${isDraggingCard ? 'is-dragging' : ''} ${isSwipeSettling ? 'is-swipe-settling' : ''}`}
+                    style={{
+                      transform: `translateX(${dragOffsetX}px) rotate(${dragOffsetX / 30}deg)`,
+                      transition: isDraggingCard ? 'none' : `transform ${SWIPE_COMMIT_DURATION_MS}ms ease`,
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setFlipped((prev) => !prev)}
+                    {...attachSwipeHandlers}
+                  >
                     <div className="flashcard-face">
-                      <p className="muted">Speak the Japanese for:</p>
-                      <h2>{currentCard.english}</h2>
-                      <p>{currentCard.context}</p>
-                      <div className="speech-actions">
-                        <button
-                          type="button"
-                          className={`mic-button ${isRecognizing ? 'is-active' : 'is-idle'}`}
-                          aria-label={isRecognizing ? 'Stop microphone' : 'Start microphone'}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (isRecognizing) {
-                              stopRecognition();
-                              setIsRecognizing(false);
-                              setIsMicArmed(false);
-                              return;
-                            }
+                      {!flipped ? (
+                        <>
+                          <h2>{currentCard.english}</h2>
+                          <div className="speech-actions">
+                            <button
+                              type="button"
+                              className={`mic-button ${isRecognizing ? 'is-active' : 'is-idle'}`}
+                              aria-label={isRecognizing ? 'Stop microphone' : 'Start microphone'}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isRecognizing) {
+                                  stopRecognition();
+                                  setIsRecognizing(false);
+                                  setIsMicArmed(false);
+                                  return;
+                                }
 
-                            setIsMicArmed(true);
-                            void startSpeechCheck();
-                          }}
-                          disabled={!isRecognitionSupported}
-                        >
-                          <svg viewBox="0 0 24 24" aria-hidden="true" className="mic-icon">
-                            <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.08A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z" fill="currentColor" />
-                          </svg>
-                        </button>
-                      </div>
+                                setIsMicArmed(true);
+                                if (!hasMicPrimed) {
+                                  setHasMicPrimed(true);
+                                  try {
+                                    window.localStorage.setItem(MIC_AUTO_START_KEY, '1');
+                                  } catch {
+                                    // Ignore storage errors; mic still works for this session.
+                                  }
+                                }
+                                void startSpeechCheck();
+                              }}
+                              disabled={!isRecognitionSupported}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true" className="mic-icon">
+                                <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.08A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z" fill="currentColor" />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flashcard-face answer">
+                          <h2>{currentCard.japanese}</h2>
+                          <p>{currentCard.romaji}</p>
+                        </div>
+                      )}
 
-                      <p className="muted">Swipe left or right to move between cards.</p>
                       {!isRecognitionSupported && (
                         <p className="muted">Speech recognition is not available in this browser.</p>
                       )}
