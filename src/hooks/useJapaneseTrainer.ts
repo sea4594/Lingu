@@ -102,7 +102,7 @@ function toWordStats(wordId: string, now: number): WordLearningStats {
     lastSeenAt: now,
     nextDueAt: now,
     intervalDays: 0,
-    comprehension: 25,
+    comprehension: 0,
   };
 }
 
@@ -174,6 +174,7 @@ export const useJapaneseTrainer = () => {
   const finishPlacement = useCallback(
     (answers: Record<string, boolean>) => {
       update((prev) => {
+        const now = Date.now();
         const weighted = PLACEMENT_QUESTIONS.reduce(
           (acc, question) => {
             const known = answers[question.wordId] ?? false;
@@ -208,6 +209,28 @@ export const useJapaneseTrainer = () => {
           if (group) {
             nextState = activateGroup(nextState, group);
           }
+        }
+
+        const knownWordIds = Object.entries(answers)
+          .filter(([, known]) => known)
+          .map(([wordId]) => wordId);
+
+        if (knownWordIds.length > 0) {
+          const statsByWordId = { ...nextState.statsByWordId };
+          knownWordIds.forEach((wordId) => {
+            const existing = statsByWordId[wordId] ?? toWordStats(wordId, now);
+            statsByWordId[wordId] = {
+              ...existing,
+              comprehension: 100,
+              lastSeenAt: now,
+              nextDueAt: now,
+            };
+          });
+
+          nextState = {
+            ...nextState,
+            statsByWordId,
+          };
         }
 
         return {

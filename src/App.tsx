@@ -8,7 +8,7 @@ import {
   type MouseEvent,
   type TouchEvent,
 } from 'react';
-import { Settings, X } from 'lucide-react';
+import { Settings, Volume2, X } from 'lucide-react';
 import {
   JAPANESE_VOCAB_BY_ID,
   JAPANESE_VOCAB_GROUPS,
@@ -91,6 +91,7 @@ function App() {
   const [, setStudyGroupId] = useState<string | null>(null);
   const [groupSessionWordIds, setGroupSessionWordIds] = useState<string[]>([]);
   const [groupRoundRemainingIds, setGroupRoundRemainingIds] = useState<string[]>([]);
+  const [expandedMyVocabGroupId, setExpandedMyVocabGroupId] = useState<string | null>(null);
   const [expandedCacheGroupId, setExpandedCacheGroupId] = useState<string | null>(null);
 
   const [isTakingPlacementQuiz, setIsTakingPlacementQuiz] = useState(false);
@@ -539,6 +540,16 @@ function App() {
     });
   }, [activeGroups, state.activeWordIds]);
 
+  const pieStyleForPercent = (percent: number) => {
+    const clamped = Math.max(0, Math.min(100, percent));
+    const hue = Math.round((clamped / 100) * 120);
+    const color = `hsl(${hue} 72% 45%)`;
+    const degrees = clamped * 3.6;
+    return {
+      background: `conic-gradient(${color} 0deg ${degrees}deg, #ece4d6 ${degrees}deg 360deg)`,
+    };
+  };
+
   if (isTakingPlacementQuiz) {
     const question = placementQuestions[placementIndex];
     const progressPercent = Math.round(((placementIndex + 1) / placementQuestions.length) * 100);
@@ -912,65 +923,95 @@ function App() {
             </div>
 
             <div className="group-list">
-              {groupedActiveWords.map(({ group, words }) => (
-                <section key={group.id} className="group-card">
-                  <header>
-                    <div>
-                      <h3>{group.name}</h3>
-                      <p>{words.length} active words</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="group-remove-x"
-                      aria-label={`Remove ${group.name}`}
-                      onClick={() => {
-                        const isConfirmed = window.confirm(`Are you sure you want to remove this group: ${group.name}?`);
-                        if (isConfirmed) {
-                          removeGroup(group.id);
-                        }
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </header>
-
-                  <div className="group-actions">
-                    <button
-                      type="button"
-                      className="button button-soft"
-                      onClick={() => startStudyGroup(group.id)}
-                      disabled={words.length === 0}
-                    >
-                      Study Group
-                    </button>
-                  </div>
-
-                  <div className="word-table">
-                    {words.map((word) => (
-                      <article key={word.id} className="word-row">
+              {groupedActiveWords.map(({ group, words }) => {
+                const isOpen = expandedMyVocabGroupId === group.id;
+                return (
+                  <section key={group.id} className="group-card">
+                    <header className="group-card-header">
+                      <button
+                        type="button"
+                        className="group-card-toggle"
+                        onClick={() => {
+                          setExpandedMyVocabGroupId((prev) => (prev === group.id ? null : group.id));
+                        }}
+                      >
                         <div>
-                          <strong>{word.english}</strong>
-                          <p>{word.japanese} • {word.romaji}</p>
+                          <h3>{group.name}</h3>
+                          <p>{words.length} active words</p>
                         </div>
-                        <div className="row-actions">
+                      </button>
+                      <button
+                        type="button"
+                        className="group-remove-x"
+                        aria-label={`Remove ${group.name}`}
+                        onClick={() => {
+                          const isConfirmed = window.confirm(`Are you sure you want to remove this group: ${group.name}?`);
+                          if (isConfirmed) {
+                            removeGroup(group.id);
+                            setExpandedMyVocabGroupId((prev) => (prev === group.id ? null : prev));
+                          }
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </header>
+
+                    {isOpen && (
+                      <>
+                        <div className="group-actions">
                           <button
                             type="button"
                             className="button button-soft"
-                            onClick={() => {
-                              speakJapanese(word.japanese);
-                            }}
-                            disabled={isSpeaking}
+                            onClick={() => startStudyGroup(group.id)}
+                            disabled={words.length === 0}
                           >
-                            Speak
+                            Study Group
                           </button>
-                          <span>{comprehensionForWord(word.id)}%</span>
-                          <button type="button" className="button button-soft" onClick={() => removeWord(word.id)}>Remove</button>
                         </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ))}
+
+                        <div className="word-table">
+                          {words.map((word) => {
+                            const percentKnown = comprehensionForWord(word.id);
+                            return (
+                              <article key={word.id} className="word-row">
+                                <button
+                                  type="button"
+                                  className="word-remove-x"
+                                  aria-label={`Remove ${word.english}`}
+                                  onClick={() => removeWord(word.id)}
+                                >
+                                  <X size={14} />
+                                </button>
+
+                                <div className="word-primary">
+                                  <strong>{word.english}</strong>
+                                  <p className="word-japanese">{word.japanese}</p>
+                                  <p className="word-romaji">{word.romaji}</p>
+                                  <button
+                                    type="button"
+                                    className="word-speak-icon"
+                                    aria-label={`Play ${word.japanese} out loud`}
+                                    onClick={() => {
+                                      speakJapanese(word.japanese);
+                                    }}
+                                    disabled={isSpeaking}
+                                  >
+                                    <Volume2 size={16} />
+                                  </button>
+                                </div>
+
+                                <div className="word-indicator" aria-label={`${percentKnown}% known`} title={`${percentKnown}% known`}>
+                                  <span className="progress-pie" style={pieStyleForPercent(percentKnown)} />
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </section>
+                );
+              })}
             </div>
 
             <footer className="list-footer">
@@ -1074,10 +1115,30 @@ function App() {
                             return null;
                           }
 
+                          const percentKnown = comprehensionForWord(word.id);
+
                           return (
-                            <article key={wordId} className="cache-word-row">
-                              <strong>{word.english}</strong>
-                              <p>{word.japanese} • {word.romaji}</p>
+                            <article key={wordId} className="cache-word-row word-row is-readonly">
+                              <div className="word-primary">
+                                <strong>{word.english}</strong>
+                                <p className="word-japanese">{word.japanese}</p>
+                                <p className="word-romaji">{word.romaji}</p>
+                                <button
+                                  type="button"
+                                  className="word-speak-icon"
+                                  aria-label={`Play ${word.japanese} out loud`}
+                                  onClick={() => {
+                                    speakJapanese(word.japanese);
+                                  }}
+                                  disabled={isSpeaking}
+                                >
+                                  <Volume2 size={16} />
+                                </button>
+                              </div>
+
+                              <div className="word-indicator" aria-label={`${percentKnown}% known`} title={`${percentKnown}% known`}>
+                                <span className="progress-pie" style={pieStyleForPercent(percentKnown)} />
+                              </div>
                             </article>
                           );
                         })}
