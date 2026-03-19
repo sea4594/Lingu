@@ -39,24 +39,11 @@ interface SpeechOptions {
   volume?: number;
 }
 
-const isIOSLikeDevice = (): boolean => {
-  if (typeof navigator === 'undefined') {
-    return false;
-  }
-
-  const ua = navigator.userAgent || '';
-  const platform = navigator.platform || '';
-  const touchPoints = navigator.maxTouchPoints || 0;
-
-  return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
-};
-
 export const useSpeech = () => {
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const pendingRejectRef = useRef<((reason?: unknown) => void) | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manuallyStoppedRef = useRef(false);
-  const micPermissionPrimedRef = useRef(false);
 
   /** Speak text using Web SpeechSynthesis API */
   const speak = useCallback((text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -95,20 +82,6 @@ export const useSpeech = () => {
   const isRecognitionSupported =
     typeof window !== 'undefined' && getSpeechRecognitionCtor() !== null;
 
-  const primeMicrophonePermission = useCallback(async () => {
-    if (!isIOSLikeDevice() || micPermissionPrimedRef.current) {
-      return;
-    }
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      return;
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop());
-    micPermissionPrimedRef.current = true;
-  }, []);
-
   /** Start speech recognition and return the transcript */
   const recognize = useCallback(
     (lang = 'en-US', timeout = 8000): Promise<string> => {
@@ -133,99 +106,140 @@ export const useSpeech = () => {
 
         let settled = false;
         let transcript = '';
+        const startedAt = Date.now();
+        let usedEarlyRecovery = false;
+        let restartId: ReturnType<typeof setTimeout> | null = null;
 
         const cleanup = () => {
           if (timeoutIdRef.current) {
             clearTimeout(timeoutIdRef.current);
             timeoutIdRef.current = null;
           }
+          if (restartId) {
+            clearTimeout(restartId);
+            restartId = null;
+          }
           recognitionRef.current = null;
           pendingRejectRef.current = null;
         };
 
-        const recognition = new Ctor();
-        recognitionRef.current = recognition;
-        recognition.lang = lang;
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.onresult = (event: ISpeechRecognitionEvent) => {
-          const firstResult = event.results[0]?.[0]?.transcript ?? '';
-          const nextTranscript = firstResult.trim();
-
-          if (!nextTranscript) {
-            return;
+        const shouldTryEarlyRecovery = () => {
+          if (usedEarlyRecovery || settled || manuallyStoppedRef.current) {
+            return false;
           }
-
-          transcript = nextTranscript;
-          if (!settled) {
-            settled = true;
-            cleanup();
-            resolve(transcript);
-          }
+          const elapsedMs = Date.now() - startedAt;
+          return elapsedMs < 1400;
         };
 
-        recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
-          if (settled) {
-            return;
-          }
-
-          if (manuallyStoppedRef.current) {
-            settled = true;
-            cleanup();
-            reject(new Error('Recognition manually stopped'));
-            return;
-          }
-
-          settled = true;
-          cleanup();
-          reject(new Error(`Recognition error: ${event.error}`));
-        };
-
-        recognition.onend = () => {
-          if (settled) {
-            return;
-          }
-
-          if (manuallyStoppedRef.current) {
-            settled = true;
-            cleanup();
-            reject(new Error('Recognition manually stopped'));
-            return;
-          }
-
-          if (transcript.length > 0) {
-            settled = true;
-            cleanup();
-            resolve(transcript);
-            return;
-          }
-
-          settled = true;
-          cleanup();
-          reject(new Error('Recognition timed out'));
-        };
-
-        void (async () => {
-          try {
-            await primeMicrophonePermission();
-          } catch {
-            // Ignore priming errors and still try recognition.
-          }
-
+        const startSession = () => {
           if (settled || manuallyStoppedRef.current) {
             return;
           }
 
+          const recognition = new Ctor();
+          recognitionRef.current = recognition;
+          recognition.lang = lang;
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.maxAlternatives = 2;
+
+          recognition.onresult = (event: ISpeechRecognitionEvent) => {
+            const latestIndex = event.results.length - 1;
+            const latest = event.results[latestIndex]?.[0]?.transcript ?? '';
+            const nextTranscript = latest.trim();
+
+            if (!nextTranscript) {
+              return;
+            }
+
+            transcript = nextTranscript;
+            if (!settled) {
+              settled = true;
+              cleanup();
+              resolve(transcript);
+            }
+          };
+
+          recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
+            if (settled) {
+              return;
+            }
+
+            if (manuallyStoppedRef.current) {
+              settled = true;
+              cleanup();
+              reject(new Error('Recognition manually stopped'));
+              return;
+            }
+
+            const err = event.error.toLowerCase();
+            const recoverable = err === 'aborted' || err === 'network' || err === 'no-speech';
+            if (recoverable && shouldTryEarlyRecovery()) {
+              usedEarlyRecovery = true;
+              restartId = setTimeout(() => {
+                restartId = null;
+                startSession();
+              }, 260);
+              return;
+            }
+
+            settled = true;
+            cleanup();
+            reject(new Error(`Recognition error: ${event.error}`));
+          };
+
+          recognition.onend = () => {
+            if (settled) {
+              return;
+            }
+
+            if (manuallyStoppedRef.current) {
+              settled = true;
+              cleanup();
+              reject(new Error('Recognition manually stopped'));
+              return;
+            }
+
+            if (transcript.length > 0) {
+              settled = true;
+              cleanup();
+              resolve(transcript);
+              return;
+            }
+
+            if (shouldTryEarlyRecovery()) {
+              usedEarlyRecovery = true;
+              restartId = setTimeout(() => {
+                restartId = null;
+                startSession();
+              }, 260);
+              return;
+            }
+
+            settled = true;
+            cleanup();
+            reject(new Error('Recognition timed out'));
+          };
+
           try {
             recognition.start();
           } catch (e) {
+            if (shouldTryEarlyRecovery()) {
+              usedEarlyRecovery = true;
+              restartId = setTimeout(() => {
+                restartId = null;
+                startSession();
+              }, 300);
+              return;
+            }
+
             settled = true;
             cleanup();
             reject(new Error(`Failed to start recognition: ${e instanceof Error ? e.message : String(e)}`));
           }
-        })();
+        };
+
+        startSession();
 
         timeoutIdRef.current = setTimeout(() => {
           if (settled) {
@@ -247,7 +261,7 @@ export const useSpeech = () => {
         }, timeout);
       });
     },
-    [primeMicrophonePermission]
+    []
   );
 
   const stopRecognition = useCallback(() => {
